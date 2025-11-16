@@ -3,7 +3,9 @@ import type { Request, Response } from "express";
 
 describe("Prove Endpoint", () => {
   it("should return proof with status 200", () => {
-    const req = {} as Request;
+    const req = {
+      body: { raw_email: "test@example.com" },
+    } as Request;
     const res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
@@ -12,6 +14,8 @@ describe("Prove Endpoint", () => {
     proveEndpoint(req, res);
 
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ proof: "proof" });
+    expect(res.json).toHaveBeenCalledWith({
+      raw_email: "test@example.com",
+    });
   });
 });

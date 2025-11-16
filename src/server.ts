@@ -3,8 +3,12 @@ import type { Request, Response } from "express";
 const app = express();
 const port = 3000;
 
+// Middleware to parse JSON request bodies
+app.use(express.json());
+
 export const proveEndpoint = (req: Request, res: Response) => {
-  res.status(200).json({ proof: "proof" });
+  console.log(req.body);
+  res.status(200).json(req.body);
 };
 
 app.post("/prove", proveEndpoint);
