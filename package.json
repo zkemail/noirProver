@@ -4,11 +4,12 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun run src/server.ts"
+    "start:node": "NODE_OPTIONS='--max-old-space-size=16384' tsx src/server.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/express": "^5.0.5"
+    "@types/express": "^5.0.5",
+    "@zk-email/sdk": "3.0.0-nightly.8"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -17,8 +18,11 @@
     "@types/jest": "^30.0.0",
     "@types/supertest": "^6.0.3",
     "express": "^5.1.0",
+    "fake-indexeddb": "^6.2.5",
     "jest": "^30.2.0",
     "supertest": "^7.1.4",
-    "ts-jest": "^29.4.5"
+    "ts-jest": "^29.4.5",
+    "tsx": "^4.20.6",
+    "web-worker": "^1.5.0"
   }
 }
