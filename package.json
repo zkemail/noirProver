@@ -1,10 +1,10 @@
 {
   "name": "noirprover",
-  "module": "index.ts",
+  "module": "src",
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun run index.ts"
+    "start": "bun run src/server.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -14,6 +14,11 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "express": "^5.1.0"
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^6.0.3",
+    "express": "^5.1.0",
+    "jest": "^30.2.0",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.5"
   }
 }
