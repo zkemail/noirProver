@@ -23,7 +23,11 @@ const port = 3000;
 // Middleware to parse JSON request bodies
 app.use(express.json());
 
-export const prove = async (rawEmail: string, blueprintSlug: string) => {
+export const prove = async (
+  rawEmail: string,
+  blueprintSlug: string,
+  command: string
+) => {
   const { default: initZkEmail } = await import("@zk-email/sdk");
   const { initNoirWasm } = await import("@zk-email/sdk/initNoirWasm");
 
@@ -37,7 +41,7 @@ export const prove = async (rawEmail: string, blueprintSlug: string) => {
   const externalInputs = [
     {
       name: "command",
-      value: "",
+      value: command,
     },
   ];
 
@@ -55,12 +59,18 @@ export const prove = async (rawEmail: string, blueprintSlug: string) => {
 export const proveEndpoint = async (req: Request, res: Response) => {
   const { proof, verification } = await prove(
     req.body.rawEmail,
-    req.body.blueprintSlug
+    req.body.blueprintSlug,
+    req.body.command
   );
   res.status(200).json({ proof, verification });
 };
 
 app.post("/prove", proveEndpoint);
+
+// Health check endpoint for Docker
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 
 app.listen(port, () => {
   console.log(`Noir Prover listening on port http://localhost:${port}`);
