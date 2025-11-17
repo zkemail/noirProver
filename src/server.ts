@@ -25,6 +25,7 @@ import { promisify } from "util";
 import { exec } from "child_process";
 import TOML from "@iarna/toml";
 import { $ } from "bun";
+import { randomUUID } from "crypto";
 
 const execAsync = promisify(exec);
 const app = express();
@@ -137,6 +138,10 @@ async function prepareCircuit(blueprint: any): Promise<string> {
   console.log("Running compile.sh...");
   await $`cd "${circuitDir}" && nargo compile`;
 
+  // Create marker file to indicate successful compilation
+  fs.writeFileSync(compiledMarker, new Date().toISOString(), "utf-8");
+  console.log("Circuit compiled and marked successfully");
+
   return circuitDir;
 }
 
@@ -159,49 +164,68 @@ export const getProof = async (
   const circuitPath = await prepareCircuit(blueprint);
   console.log(`Circuit path: ${circuitPath}`);
 
-  const inputsGenerator = new InputsGenerator(blueprint);
+  // Create a unique working directory for this proof request
+  const workingDir = path.join(CIRCUITS_DIR, `working-${randomUUID()}`);
+  fs.mkdirSync(workingDir, { recursive: true });
+  console.log(`Created working directory: ${workingDir}`);
 
-  const externalInputs = [
-    {
-      name: "command",
-      value: command,
-    },
-  ];
+  try {
+    // Copy compiled circuit to working directory
+    await execAsync(`cp -r "${circuitPath}"/* "${workingDir}"/`);
+    console.log(`Copied circuit to working directory`);
 
-  const circuitInputs = await inputsGenerator.generateInputs(
-    rawEmail,
-    externalInputs
-  );
+    const inputsGenerator = new InputsGenerator(blueprint);
 
-  // Convert circuit inputs to TOML and save as Prover.toml
-  console.log("Converting circuit inputs to TOML format");
-  const tomlContent = TOML.stringify(circuitInputs);
-  const proverTomlPath = path.join(circuitPath, "Prover.toml");
-  fs.writeFileSync(proverTomlPath, tomlContent, "utf-8");
-  console.log(`Saved Prover.toml to: ${proverTomlPath}`);
+    const externalInputs = [
+      {
+        name: "command",
+        value: command,
+      },
+    ];
 
-  // Run prove.sh to generate the proof
-  console.log("Running prove to generate proof...");
-  await $`cd "${circuitPath}" && nargo execute circuit > /dev/null`;
-  await $`cd "${circuitPath}" && bb prove --scheme ultra_honk --bytecode_path ./target/circuit.json --witness_path ./target/circuit.gz --output_path ./target --oracle_hash keccak --output_format bytes_and_fields> /dev/null`;
+    const circuitInputs = await inputsGenerator.generateInputs(
+      rawEmail,
+      externalInputs
+    );
 
-  // Load the generated proof and public inputs fields
-  const proofFieldsPath = path.join(circuitPath, "target", "proof_fields.json");
-  const publicInputsFieldsPath = path.join(
-    circuitPath,
-    "target",
-    "public_inputs_fields.json"
-  );
+    // Convert circuit inputs to TOML and save as Prover.toml
+    console.log("Converting circuit inputs to TOML format");
+    const tomlContent = TOML.stringify(circuitInputs);
+    const proverTomlPath = path.join(workingDir, "Prover.toml");
+    fs.writeFileSync(proverTomlPath, tomlContent, "utf-8");
+    console.log(`Saved Prover.toml to: ${proverTomlPath}`);
 
-  const proofFields = JSON.parse(fs.readFileSync(proofFieldsPath, "utf-8"));
-  const publicInputsFields = JSON.parse(
-    fs.readFileSync(publicInputsFieldsPath, "utf-8")
-  );
+    // Run prove.sh to generate the proof
+    console.log("Running prove to generate proof...");
+    await $`cd "${workingDir}" && nargo execute circuit > /dev/null`;
+    await $`cd "${workingDir}" && bb prove --scheme ultra_honk --bytecode_path ./target/circuit.json --witness_path ./target/circuit.gz --output_path ./target --oracle_hash keccak --output_format bytes_and_fields> /dev/null`;
 
-  return {
-    proof: proofFields,
-    publicInputs: publicInputsFields,
-  };
+    // Load the generated proof and public inputs fields
+    const proofFieldsPath = path.join(
+      workingDir,
+      "target",
+      "proof_fields.json"
+    );
+    const publicInputsFieldsPath = path.join(
+      workingDir,
+      "target",
+      "public_inputs_fields.json"
+    );
+
+    const proofFields = JSON.parse(fs.readFileSync(proofFieldsPath, "utf-8"));
+    const publicInputsFields = JSON.parse(
+      fs.readFileSync(publicInputsFieldsPath, "utf-8")
+    );
+
+    return {
+      proof: proofFields,
+      publicInputs: publicInputsFields,
+    };
+  } finally {
+    // Clean up working directory
+    fs.rmSync(workingDir, { recursive: true, force: true });
+    console.log(`Cleaned up working directory: ${workingDir}`);
+  }
 };
 
 export const proveEndpoint = async (req: Request, res: Response) => {
