@@ -60,14 +60,9 @@ RUN npm install --omit=dev && \
 
 # Copy source code
 COPY src ./src
-COPY .cache/circuits .cache/circuits
+COPY .cache/ .cache/
 
-# Create a non-root user
-RUN groupadd --gid 1001 nodejs && \
-    useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nodejs && \
-    chown -R nodejs:nodejs /app
-
-USER nodejs
+RUN apt install libc6
 
 # Expose port
 EXPOSE 3000
