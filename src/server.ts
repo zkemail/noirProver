@@ -135,25 +135,7 @@ async function prepareCircuit(blueprint: any): Promise<string> {
   console.log("Scripts copied and made executable");
 
   console.log("Running compile.sh...");
-  try {
-    await execAsync(`cd "${circuitDir}" && ./compile.sh`);
-    // Create marker file to indicate compilation is complete
-    fs.writeFileSync(compiledMarker, new Date().toISOString());
-    console.log("Circuit compiled successfully");
-  } catch (error: any) {
-    console.error("Failed to compile circuit:", error);
-    if (error.stdout) console.error("Error stdout:", error.stdout);
-    if (error.stderr) console.error("Error stderr:", error.stderr);
-
-    // Also log the compile.log file if it exists
-    const compileLogPath = path.join(circuitDir, "compile.log");
-    if (fs.existsSync(compileLogPath)) {
-      const compileLog = fs.readFileSync(compileLogPath, "utf-8");
-      console.error("Compile log:", compileLog);
-    }
-
-    throw new Error(`Circuit compilation failed: ${error.message}`);
-  }
+  await $`cd "${circuitDir}" && nargo compile`;
 
   return circuitDir;
 }
@@ -199,68 +181,26 @@ export const getProof = async (
   console.log(`Saved Prover.toml to: ${proverTomlPath}`);
 
   // Run prove.sh to generate the proof
-  console.log("Running prove.sh to generate proof...");
-  let proofResult: any;
-  try {
-    // Run bash script with explicit PATH, redirect output to avoid hanging
-    await execAsync(`cd "${circuitPath}" && ./prove.sh`);
+  console.log("Running prove to generate proof...");
+  await $`cd "${circuitPath}" && nargo execute circuit > /dev/null`;
+  await $`cd "${circuitPath}" && bb prove --scheme ultra_honk --bytecode_path ./target/circuit.json --witness_path ./target/circuit.gz --output_path ./target --oracle_hash keccak --output_format bytes_and_fields> /dev/null`;
 
-    // Read the generated proof files
-    const proofFieldsPath = path.join(
-      circuitPath,
-      "target",
-      "proof_fields.json"
-    );
-    const publicInputsFieldsPath = path.join(
-      circuitPath,
-      "target",
-      "public_inputs_fields.json"
-    );
+  // Load the generated proof and public inputs fields
+  const proofFieldsPath = path.join(circuitPath, "target", "proof_fields.json");
+  const publicInputsFieldsPath = path.join(
+    circuitPath,
+    "target",
+    "public_inputs_fields.json"
+  );
 
-    proofResult = {
-      proofGenerated: true,
-      proofFieldsPath: fs.existsSync(proofFieldsPath) ? proofFieldsPath : null,
-      publicInputsFieldsPath: fs.existsSync(publicInputsFieldsPath)
-        ? publicInputsFieldsPath
-        : null,
-    };
-
-    // Optionally read the proof data
-    if (fs.existsSync(proofFieldsPath)) {
-      const proofFields = JSON.parse(fs.readFileSync(proofFieldsPath, "utf-8"));
-      proofResult.proofFields = proofFields;
-    }
-
-    if (fs.existsSync(publicInputsFieldsPath)) {
-      const publicInputsFields = JSON.parse(
-        fs.readFileSync(publicInputsFieldsPath, "utf-8")
-      );
-      proofResult.publicInputsFields = publicInputsFields;
-    }
-
-    console.log("Proof generated successfully");
-  } catch (error) {
-    console.error("Failed to generate proof:", error);
-    proofResult = {
-      proofGenerated: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-
-  const processingTime = Date.now() - startTime;
+  const proofFields = JSON.parse(fs.readFileSync(proofFieldsPath, "utf-8"));
+  const publicInputsFields = JSON.parse(
+    fs.readFileSync(publicInputsFieldsPath, "utf-8")
+  );
 
   return {
-    success: true,
-    circuitInputs,
-    circuitPath,
-    proverTomlPath,
-    proof: proofResult,
-    metadata: {
-      blueprintSlug,
-      blueprintId,
-      processingTimeMs: processingTime,
-      timestamp: new Date().toISOString(),
-    },
+    proof: proofFields,
+    publicInputs: publicInputsFields,
   };
 };
 

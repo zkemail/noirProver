@@ -146,11 +146,13 @@ export class InputsGenerator {
     const noirParams = {
       maxHeaderLength: this.blueprint.props.emailHeaderMaxLength || 512,
       maxBodyLength: this.blueprint.props.emailBodyMaxLength || 0,
-      ignoreBodyHashCheck: this.blueprint.props.ignoreBodyHashCheck,
+      ignoreBodyHashCheck: false,
       removeSoftLineBreaks: this.blueprint.props.removeSoftLinebreaks,
       shaPrecomputeSelector: this.blueprint.props.shaPrecomputeSelector,
       proverEthAddress: "0x0000000000000000000000000000000000000000",
     };
+
+    console.log(noirParams);
 
     console.log("External inputs: ", externalInputs);
 
@@ -170,21 +172,24 @@ export class InputsGenerator {
       );
 
     console.log("Circuit inputs generated successfully (Map)");
-
-    // Convert from Map to object (like in the SDK reference)
-    const circuitInputs: any = {};
+    // Convert from Map to object
+    const circuitInputsObject: any = {};
     for (const [key, value] of circuitInputsMap) {
       if (value && typeof value === "object" && value instanceof Map) {
-        circuitInputs[key] = Object.fromEntries(value);
-      } else if (value !== undefined) {
-        circuitInputs[key] = value;
+        circuitInputsObject[key] = Object.fromEntries(value);
+      } else if (value) {
+        circuitInputsObject[key] = value;
       }
     }
 
     console.log("Circuit inputs converted to object");
-    console.log("Number of input fields:", Object.keys(circuitInputs).length);
+    console.log(
+      "Number of input fields:",
+      Object.keys(circuitInputsObject).length
+    );
 
-    return circuitInputs;
+    console.log("Circuit inputs: ", circuitInputsObject);
+    return circuitInputsObject;
   }
 }
 
