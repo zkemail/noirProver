@@ -209,9 +209,10 @@ function ensureCacheDir() {
 
 function getCacheKey(blueprint: Blueprint): string {
   // Use the blueprint slug or id as cache key
-  const key = blueprint.props.slug || blueprint.props.id;
+  const key = blueprint.props.id?.toString();
+  console.log("Blueprint id: ", blueprint.props.id);
   if (!key) {
-    throw new Error("Blueprint must have either a slug or id for caching");
+    throw new Error("Blueprint must have an id for caching");
   }
   return key;
 }

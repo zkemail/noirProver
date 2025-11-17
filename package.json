@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "NODE_OPTIONS='--max-old-space-size=16384' tsx src/server.ts"
+    "start": "NODE_OPTIONS='--max-old-space-size=16384' bun src/server.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -14,18 +14,19 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@zk-email/sdk": "3.0.0-nightly.8",
+    "@aztec/bb.js": "0.82.2",
+    "@iarna/toml": "^2.2.5",
+    "@noir-lang/noir_js": "1.0.0-beta.6",
     "@types/jest": "^30.0.0",
     "@types/supertest": "^6.0.3",
+    "@zk-email/relayer-utils": "0.4.66-4",
+    "@zk-email/sdk": "3.0.0-nightly.8",
     "express": "^5.1.0",
     "fake-indexeddb": "^6.2.5",
     "jest": "^30.2.0",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.5",
     "tsx": "^4.20.6",
-    "web-worker": "^1.5.0",
-    "@aztec/bb.js": "0.82.2",
-    "@zk-email/relayer-utils": "0.4.66-4",
-    "@noir-lang/noir_js": "1.0.0-beta.6"
+    "web-worker": "^1.5.0"
   }
 }
