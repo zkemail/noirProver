@@ -25,6 +25,34 @@ async function initWasm() {
   }
 }
 
+// Cache for circuit and regex graphs by blueprint slug
+interface BlueprintCache {
+  circuit: any;
+  regexGraphs: any;
+}
+
+const blueprintCache = new Map<string, BlueprintCache>();
+
+function getCacheKey(blueprint: Blueprint): string {
+  // Use the blueprint slug or id as cache key
+  const key = blueprint.props.slug || blueprint.props.id;
+  if (!key) {
+    throw new Error("Blueprint must have either a slug or id for caching");
+  }
+  return key;
+}
+
+// Utility function to clear cache (useful for testing or when blueprints are updated)
+export function clearBlueprintCache(blueprintSlug?: string) {
+  if (blueprintSlug) {
+    blueprintCache.delete(blueprintSlug);
+    console.log(`Cleared cache for blueprint: ${blueprintSlug}`);
+  } else {
+    blueprintCache.clear();
+    console.log("Cleared all blueprint caches");
+  }
+}
+
 export function addMaxLengthToExternalInputs(
   externalInputs: ExternalInputInput[],
   externalInputDefinitions?: ExternalInput[]
@@ -66,10 +94,29 @@ export class InputsGenerator {
     console.log("WASM initialized");
     const parsedEmail = await parseEmail(eml);
     console.log("Email parsed");
-    const circuit = await this.blueprint.getNoirCircuit();
-    console.log("Circuit fetched");
-    const regexGraphs = await this.blueprint.getNoirRegexGraphs();
-    console.log("Regex graphs fetched");
+
+    // Check cache first
+    const cacheKey = getCacheKey(this.blueprint);
+    let cached = blueprintCache.get(cacheKey);
+
+    let circuit;
+    let regexGraphs;
+
+    if (cached) {
+      console.log("Using cached circuit and regex graphs");
+      circuit = cached.circuit;
+      regexGraphs = cached.regexGraphs;
+    } else {
+      console.log("Fetching circuit and regex graphs (first time)");
+      circuit = await this.blueprint.getNoirCircuit();
+      console.log("Circuit fetched");
+      regexGraphs = await this.blueprint.getNoirRegexGraphs();
+      console.log("Regex graphs fetched");
+
+      // Cache for future requests
+      blueprintCache.set(cacheKey, { circuit, regexGraphs });
+      console.log(`Cached circuit and regex graphs for blueprint: ${cacheKey}`);
+    }
     const regexInputs = this.blueprint.props.decomposedRegexes.map((dr) => {
       const regexGraph = regexGraphs[`${dr.name}_regex.json`];
       if (!regexGraph) {
@@ -149,7 +196,10 @@ export class InputsGenerator {
         externalInputsWithMaxLength,
         noirParams
       );
-    console.log("circuitInputs: ", circuitInputs);
+
+    console.log("Circuit inputs generated successfully");
+    console.log("Number of input fields:", Object.keys(circuitInputs).length);
+
     return circuitInputs;
   }
 }

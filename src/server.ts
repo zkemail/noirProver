@@ -29,6 +29,8 @@ export const prove = async (
   blueprintSlug: string,
   command: string
 ) => {
+  const startTime = Date.now();
+
   const { default: initZkEmail } = await import("@zk-email/sdk");
   const { initNoirWasm } = await import("@zk-email/sdk/initNoirWasm");
 
@@ -47,21 +49,48 @@ export const prove = async (
     },
   ];
 
-  const proofInputs = await inputsGenerator.generateInputs(
+  const circuitInputs = await inputsGenerator.generateInputs(
     rawEmail,
     externalInputs
   );
 
-  return { proofInputs };
+  const processingTime = Date.now() - startTime;
+
+  return {
+    success: true,
+    circuitInputs,
+    metadata: {
+      blueprintSlug,
+      processingTimeMs: processingTime,
+      timestamp: new Date().toISOString(),
+    },
+  };
 };
 
 export const proveEndpoint = async (req: Request, res: Response) => {
-  const { proofInputs } = await prove(
-    req.body.rawEmail,
-    req.body.blueprintSlug,
-    req.body.command
-  );
-  res.status(200).json({ proofInputs });
+  try {
+    const { rawEmail, blueprintSlug, command } = req.body;
+
+    // Validate required fields
+    if (!rawEmail || !blueprintSlug || !command) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Missing required fields: rawEmail, blueprintSlug, and command are required",
+      });
+    }
+
+    const result = await prove(rawEmail, blueprintSlug, command);
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error generating circuit inputs:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+      timestamp: new Date().toISOString(),
+    });
+  }
 };
 
 app.post("/prove", proveEndpoint);
