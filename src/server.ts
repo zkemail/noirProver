@@ -17,7 +17,7 @@ if (typeof (globalThis as any).indexedDB === "undefined") {
 
 import express, { text } from "express";
 import type { Request, Response } from "express";
-import { InputsGenerator } from "./prove";
+import { InputsGenerator } from "./InputsGenerator";
 const app = express();
 const port = 3000;
 
