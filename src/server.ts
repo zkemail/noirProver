@@ -24,7 +24,6 @@ import * as https from "https";
 import { promisify } from "util";
 import { exec } from "child_process";
 import TOML from "@iarna/toml";
-import { $ } from "bun";
 import { randomUUID } from "crypto";
 
 const execAsync = promisify(exec);
@@ -120,23 +119,8 @@ async function prepareCircuit(blueprint: any): Promise<string> {
     console.log("Updated Nargo.toml circuit name to 'circuit'");
   }
 
-  // Copy compile.sh and prove.sh scripts
-  const projectRoot = process.cwd();
-  const compileScriptSrc = path.join(projectRoot, "compile.sh");
-  const proveScriptSrc = path.join(projectRoot, "prove.sh");
-  const compileScriptDest = path.join(circuitDir, "compile.sh");
-  const proveScriptDest = path.join(circuitDir, "prove.sh");
-
-  console.log("Copying compile.sh and prove.sh to circuit directory");
-  fs.copyFileSync(compileScriptSrc, compileScriptDest);
-  fs.copyFileSync(proveScriptSrc, proveScriptDest);
-
-  // Make scripts executable
-  await execAsync(`chmod +x "${compileScriptDest}" "${proveScriptDest}"`);
-  console.log("Scripts copied and made executable");
-
-  console.log("Running compile.sh...");
-  await $`cd "${circuitDir}" && nargo compile`;
+  console.log("Running compile");
+  await execAsync(`cd "${circuitDir}" && nargo compile`);
 
   // Create marker file to indicate successful compilation
   fs.writeFileSync(compiledMarker, new Date().toISOString(), "utf-8");
@@ -195,10 +179,12 @@ export const getProof = async (
     fs.writeFileSync(proverTomlPath, tomlContent, "utf-8");
     console.log(`Saved Prover.toml to: ${proverTomlPath}`);
 
-    // Run prove.sh to generate the proof
+    // Run prove to generate the proof
     console.log("Running prove to generate proof...");
-    await $`cd "${workingDir}" && nargo execute circuit > /dev/null`;
-    await $`cd "${workingDir}" && bb prove --scheme ultra_honk --bytecode_path ./target/circuit.json --witness_path ./target/circuit.gz --output_path ./target --oracle_hash keccak --output_format bytes_and_fields> /dev/null`;
+    await execAsync(`cd "${workingDir}" && nargo execute circuit > /dev/null`);
+    await execAsync(
+      `cd "${workingDir}" && bb prove --scheme ultra_honk --bytecode_path ./target/circuit.json --witness_path ./target/circuit.gz --output_path ./target --oracle_hash keccak --output_format bytes_and_fields> /dev/null`
+    );
 
     // Load the generated proof and public inputs fields
     const proofFieldsPath = path.join(
