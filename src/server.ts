@@ -24,14 +24,14 @@ const port = 3000;
 // Middleware to parse JSON request bodies
 app.use(express.json());
 
-export const prove = async (
+export const getInputs = async (
   rawEmail: string,
   blueprintSlug: string,
   command: string
 ) => {
   const startTime = Date.now();
-
   const { default: initZkEmail } = await import("@zk-email/sdk");
+
   const { initNoirWasm } = await import("@zk-email/sdk/initNoirWasm");
 
   const sdk = initZkEmail({
@@ -54,16 +54,8 @@ export const prove = async (
     externalInputs
   );
 
-  const processingTime = Date.now() - startTime;
-
   return {
-    success: true,
     circuitInputs,
-    metadata: {
-      blueprintSlug,
-      processingTimeMs: processingTime,
-      timestamp: new Date().toISOString(),
-    },
   };
 };
 
@@ -80,7 +72,7 @@ export const proveEndpoint = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await prove(rawEmail, blueprintSlug, command);
+    const result = await getInputs(rawEmail, blueprintSlug, command);
 
     res.status(200).json(result);
   } catch (error) {

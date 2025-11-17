@@ -1,14 +1,4 @@
 import {
-  type DecomposedRegex,
-  type ExternalInput,
-  type ExternalInputInput,
-  type ExternalInputProof,
-  type GenerateProofOptions,
-  type ProofStatus,
-  type PublicProofData,
-  type ZkFramework,
-} from "./types";
-import {
   parseEmail,
   generateNoirCircuitInputsWithRegexesAndExternalInputs,
   init,
@@ -30,134 +20,14 @@ init()
     console.error("Failed to initialize wasm for relayer-utils: ", err);
   });
 
-// Cache for circuit and regex graphs by blueprint slug
-interface BlueprintCache {
-  circuit: any;
-  regexGraphs: any;
+export interface ExternalInput {
+  name: string;
+  maxLength: number;
 }
 
-const blueprintCache = new Map<string, BlueprintCache>();
-
-// Cache directory
-const CACHE_DIR = path.join(process.cwd(), ".cache", "blueprints");
-
-// Ensure cache directory exists
-function ensureCacheDir() {
-  if (!fs.existsSync(CACHE_DIR)) {
-    fs.mkdirSync(CACHE_DIR, { recursive: true });
-    console.log(`Created cache directory: ${CACHE_DIR}`);
-  }
-}
-
-function getCacheKey(blueprint: Blueprint): string {
-  // Use the blueprint slug or id as cache key
-  const key = blueprint.props.slug || blueprint.props.id;
-  if (!key) {
-    throw new Error("Blueprint must have either a slug or id for caching");
-  }
-  return key;
-}
-
-function getCacheFilePath(blueprintSlug: string): string {
-  // Sanitize blueprint slug for filename (replace / with -)
-  const safeSlug = blueprintSlug.replace(/\//g, "-");
-  return path.join(CACHE_DIR, `${safeSlug}.json`);
-}
-
-// Load cache from disk
-function loadCacheFromDisk(blueprintSlug: string): BlueprintCache | null {
-  try {
-    const filePath = getCacheFilePath(blueprintSlug);
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, "utf-8");
-      const cache = JSON.parse(data);
-      console.log(`Loaded cache from disk for blueprint: ${blueprintSlug}`);
-      return cache;
-    }
-  } catch (error) {
-    console.error(
-      `Failed to load cache from disk for ${blueprintSlug}:`,
-      error
-    );
-  }
-  return null;
-}
-
-// Save cache to disk
-function saveCacheToDisk(blueprintSlug: string, cache: BlueprintCache) {
-  try {
-    ensureCacheDir();
-    const filePath = getCacheFilePath(blueprintSlug);
-    fs.writeFileSync(filePath, JSON.stringify(cache, null, 2), "utf-8");
-    console.log(`Saved cache to disk for blueprint: ${blueprintSlug}`);
-  } catch (error) {
-    console.error(`Failed to save cache to disk for ${blueprintSlug}:`, error);
-  }
-}
-
-// Utility function to clear cache (useful for testing or when blueprints are updated)
-export function clearBlueprintCache(blueprintSlug?: string) {
-  if (blueprintSlug) {
-    // Clear from memory
-    blueprintCache.delete(blueprintSlug);
-
-    // Clear from disk
-    try {
-      const filePath = getCacheFilePath(blueprintSlug);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        console.log(`Cleared cache from disk for blueprint: ${blueprintSlug}`);
-      }
-    } catch (error) {
-      console.error(`Failed to clear cache from disk:`, error);
-    }
-
-    console.log(`Cleared cache for blueprint: ${blueprintSlug}`);
-  } else {
-    // Clear all from memory
-    blueprintCache.clear();
-
-    // Clear all from disk
-    try {
-      if (fs.existsSync(CACHE_DIR)) {
-        const files = fs.readdirSync(CACHE_DIR);
-        for (const file of files) {
-          fs.unlinkSync(path.join(CACHE_DIR, file));
-        }
-        console.log(`Cleared all caches from disk`);
-      }
-    } catch (error) {
-      console.error(`Failed to clear all caches from disk:`, error);
-    }
-
-    console.log("Cleared all blueprint caches");
-  }
-}
-
-export function addMaxLengthToExternalInputs(
-  externalInputs: ExternalInputInput[],
-  externalInputDefinitions?: ExternalInput[]
-) {
-  const externalInputsWithMaxLength: (ExternalInputInput & {
-    maxLength: number;
-  })[] = [];
-  if (externalInputDefinitions) {
-    for (const externalInputDefinition of externalInputDefinitions) {
-      const externalInput = externalInputs.find(
-        (ei) => ei.name === externalInputDefinition.name
-      );
-      if (!externalInput) {
-        throw new Error(
-          `You must provide the external input for ${externalInputDefinition.name}`
-        );
-      }
-      externalInputsWithMaxLength.push({
-        ...externalInput,
-        maxLength: externalInputDefinition.maxLength,
-      });
-    }
-  }
-  return externalInputsWithMaxLength;
+export interface ExternalInputInput {
+  name: string;
+  value: string;
 }
 
 export class InputsGenerator {
@@ -316,4 +186,134 @@ export class InputsGenerator {
 
     return circuitInputs;
   }
+}
+
+// Cache for circuit and regex graphs by blueprint slug
+interface BlueprintCache {
+  circuit: any;
+  regexGraphs: any;
+}
+
+const blueprintCache = new Map<string, BlueprintCache>();
+
+// Cache directory
+const CACHE_DIR = path.join(process.cwd(), ".cache", "blueprints");
+
+// Ensure cache directory exists
+function ensureCacheDir() {
+  if (!fs.existsSync(CACHE_DIR)) {
+    fs.mkdirSync(CACHE_DIR, { recursive: true });
+    console.log(`Created cache directory: ${CACHE_DIR}`);
+  }
+}
+
+function getCacheKey(blueprint: Blueprint): string {
+  // Use the blueprint slug or id as cache key
+  const key = blueprint.props.slug || blueprint.props.id;
+  if (!key) {
+    throw new Error("Blueprint must have either a slug or id for caching");
+  }
+  return key;
+}
+
+function getCacheFilePath(blueprintSlug: string): string {
+  // Sanitize blueprint slug for filename (replace / with -)
+  const safeSlug = blueprintSlug.replace(/\//g, "-");
+  return path.join(CACHE_DIR, `${safeSlug}.json`);
+}
+
+// Load cache from disk
+function loadCacheFromDisk(blueprintSlug: string): BlueprintCache | null {
+  try {
+    const filePath = getCacheFilePath(blueprintSlug);
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, "utf-8");
+      const cache = JSON.parse(data);
+      console.log(`Loaded cache from disk for blueprint: ${blueprintSlug}`);
+      return cache;
+    }
+  } catch (error) {
+    console.error(
+      `Failed to load cache from disk for ${blueprintSlug}:`,
+      error
+    );
+  }
+  return null;
+}
+
+// Save cache to disk
+function saveCacheToDisk(blueprintSlug: string, cache: BlueprintCache) {
+  try {
+    ensureCacheDir();
+    const filePath = getCacheFilePath(blueprintSlug);
+    fs.writeFileSync(filePath, JSON.stringify(cache, null, 2), "utf-8");
+    console.log(`Saved cache to disk for blueprint: ${blueprintSlug}`);
+  } catch (error) {
+    console.error(`Failed to save cache to disk for ${blueprintSlug}:`, error);
+  }
+}
+
+// Utility function to clear cache (useful for testing or when blueprints are updated)
+export function clearBlueprintCache(blueprintSlug?: string) {
+  if (blueprintSlug) {
+    // Clear from memory
+    blueprintCache.delete(blueprintSlug);
+
+    // Clear from disk
+    try {
+      const filePath = getCacheFilePath(blueprintSlug);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`Cleared cache from disk for blueprint: ${blueprintSlug}`);
+      }
+    } catch (error) {
+      console.error(`Failed to clear cache from disk:`, error);
+    }
+
+    console.log(`Cleared cache for blueprint: ${blueprintSlug}`);
+  } else {
+    // Clear all from memory
+    blueprintCache.clear();
+
+    // Clear all from disk
+    try {
+      if (fs.existsSync(CACHE_DIR)) {
+        const files = fs.readdirSync(CACHE_DIR);
+        for (const file of files) {
+          fs.unlinkSync(path.join(CACHE_DIR, file));
+        }
+        console.log(`Cleared all caches from disk`);
+      }
+    } catch (error) {
+      console.error(`Failed to clear all caches from disk:`, error);
+    }
+
+    console.log("Cleared all blueprint caches");
+  }
+}
+
+export function addMaxLengthToExternalInputs(
+  externalInputs: ExternalInputInput[],
+  externalInputDefinitions?: ExternalInput[]
+) {
+  const externalInputsWithMaxLength: (ExternalInputInput & {
+    maxLength: number;
+  })[] = [];
+  if (externalInputDefinitions) {
+    for (const externalInputDefinition of externalInputDefinitions) {
+      const externalInput = externalInputs.find(
+        (ei) => ei.name === externalInputDefinition.name
+      );
+      if (!externalInput) {
+        throw new Error(
+          `You must provide the external input for ${externalInputDefinition.name}`
+        );
+      }
+      externalInputsWithMaxLength.push({
+        ...externalInput,
+        maxLength: externalInputDefinition.maxLength,
+      });
+    }
+  }
+  return externalInputsWithMaxLength;
 }
