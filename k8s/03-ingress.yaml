@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: noir-prover-ingress
+  namespace: noir-prover
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: noir-prover-ip
+    networking.gke.io/managed-certificates: noir-prover-cert
+    ingressClassName: "gce"
+spec:
+  rules:
+    - host: "noir-prover.zk.email"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: noir-prover-service
+                port:
+                  number: 3000

@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noir-prover
+  namespace: noir-prover
+  labels:
+    app: noir-prover
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: noir-prover
+  template:
+    metadata:
+      labels:
+        app: noir-prover
+    spec:
+      containers:
+        - name: noir-prover
+          image: zkfr/noir-prover:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=16384"
+            - name: PORT
+              value: "3000"
+          resources:
+            requests:
+              memory: "32Gi"
+              cpu: "4000m"
+            limits:
+              memory: "64Gi"
+              cpu: "16000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 40
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Security context for non-root user
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: noir-prover-service
+  namespace: noir-prover
+  labels:
+    app: noir-prover
+spec:
+  type: ClusterIP
+  selector:
+    app: noir-prover
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http

@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     git \
     ca-certificates \
     unzip \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 # Install noir and nargo
@@ -42,29 +43,23 @@ RUN curl -L https://raw.githubusercontent.com/noir-lang/noirup/refs/heads/main/i
     done && \
     cd /
 
-# Install bb (barretenberg)  
-RUN curl -L https://raw.githubusercontent.com/AztecProtocol/aztec-packages/refs/heads/next/barretenberg/bbup/install | bash; \
+# Install bb (barretenberg)
+RUN curl -L https://raw.githubusercontent.com/AztecProtocol/aztec-packages/refs/heads/next/barretenberg/bbup/install | bash && \
     chmod +x ~/.bb/bbup && \
-    (~/.bb/bbup || echo "bbup completed with warnings") && \
-    if [ -d ~/.bb/bin ]; then \
-        mv ~/.bb /usr/local/ && \
-        cd /usr/local/.bb/bin && \
-        for binary in *; do \
-            ln -sf /usr/local/.bb/bin/$binary /usr/local/bin/$binary; \
-        done && \
-        cd /; \
-    else \
-        echo "Warning: bb not installed"; \
-    fi
+    ~/.bb/bbup && \
+    mv ~/.bb /usr/local/ && \
+    find /usr/local/.bb -type f -executable | while read binary; do \
+        ln -sf "$binary" /usr/local/bin/$(basename "$binary"); \
+    done
 
 # Add noir and bb binaries to PATH
 ENV PATH="/usr/local/.nargo/bin:/usr/local/.bb/bin:${PATH}"
 
 # Verify installations  
 RUN echo "Checking installed binaries..." && \
-    ls -la /usr/local/bin/ | grep -E "(nargo|bb)" || echo "Binaries not found in /usr/local/bin" && \
-    (which nargo || echo "nargo not in PATH") && \
-    (which bb || echo "bb not in PATH")
+    ls -la /usr/local/bin/ | grep -E "(nargo|bb)" && \
+    nargo --version && \
+    echo "Note: bb binary installed at $(which bb || echo 'not found')"
 
 WORKDIR /app
 
@@ -79,6 +74,7 @@ RUN npm install --omit=dev && \
 
 # Copy source code
 COPY src ./src
+COPY .cache/circuits .cache/circuits
 
 # Create a non-root user
 RUN groupadd --gid 1001 nodejs && \

@@ -1,0 +1,27 @@
+[2025-11-17 16:51:40] === Compiling circuit noir circuit ===
+[2025-11-17 16:51:40] Step 0: Checking Noir and BB versions
+[2025-11-17 16:51:40] Step 1: Compiling circuit
+warning: KEY_LIMBS_2048 is private and not visible from the current module
+  ┌─ src/main.nr:7:79
+  │
+7 │     dkim::RSAPubkey, hash::poseidon_large, headers::body_hash::get_body_hash, KEY_LIMBS_2048,
+  │                                                                               -------------- KEY_LIMBS_2048 is private
+  │
+
+warning: unused import pedersen_hash
+  ┌─ src/main.nr:5:55
+  │
+5 │ use std::{collections::bounded_vec::BoundedVec, hash::pedersen_hash};
+  │                                                       ------------- unused import
+  │
+
+warning: unused import mask_text
+  ┌─ src/main.nr:9:14
+  │
+9 │     masking::mask_text, Sequence, utils::pack_bytes,
+  │              --------- unused import
+  │
+
+[2025-11-17 16:51:45] Step 2: Writing VK
+Scheme is: ultra_honk
+Finalized circuit size: 2729872
