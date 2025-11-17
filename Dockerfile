@@ -72,9 +72,6 @@ USER nodejs
 # Expose port
 EXPOSE 3000
 
-# Use tini for proper signal handling
-ENTRYPOINT ["/usr/bin/tini", "--"]
-
 # Run with increased memory limit
 CMD ["node", "--max-old-space-size=16384", "--no-warnings", "node_modules/.bin/tsx", "src/server.ts"]
 
