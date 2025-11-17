@@ -1,8 +1,45 @@
-# Multi-stage build for minimal image size
-FROM node:22-slim AS builder
+# Base image
+FROM ubuntu:jammy
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update and install basic dependencies
+RUN apt update && \
+    apt install -y --no-install-recommends \
+    wget \
+    ca-certificates \
+    curl \
+    git \
+    build-essential \
+    gzip \
+    pkg-config \
+    libssl-dev \
+    zip \
+    unzip \
+    jq \
+    protobuf-compiler \
+    libprotobuf-dev \
+    && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Noir
+RUN curl -L https://raw.githubusercontent.com/noir-lang/noirup/refs/heads/main/install | bash
+ENV PATH="/root/.nargo/bin:$PATH"
+RUN noirup --version 1.0.0-beta.5
+
+# Install Barrentenberg
+RUN curl -L https://raw.githubusercontent.com/AztecProtocol/aztec-packages/refs/heads/master/barretenberg/bbup/install | bash
+ENV PATH="/root/.bb:$PATH"
+RUN bbup --version 0.84.0
+
+# Install Rust
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install Node.js and Yarn
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt install -y nodejs && \
+    npm install -g yarn snarkjs
 
 WORKDIR /app
 
@@ -15,57 +52,6 @@ RUN npm install
 
 # Copy source code
 COPY src ./src
-
-# Build is not needed since we use tsx, but we validate the setup
-RUN npm list
-
-# Production stage
-FROM node:22-slim
-
-# Install production dependencies only
-RUN apt-get update && apt-get install -y \
-    tini \
-    bash \
-    curl \
-    git \
-    ca-certificates \
-    unzip \
-    jq \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install noir and nargo
-RUN curl -L https://raw.githubusercontent.com/noir-lang/noirup/refs/heads/main/install | bash; \
-    /root/.nargo/bin/noirup --version v1.0.0-beta.5 && \
-    mv ~/.nargo /usr/local/ && \
-    cd /usr/local/.nargo/bin && \
-    for binary in *; do \
-        ln -sf /usr/local/.nargo/bin/$binary /usr/local/bin/$binary; \
-    done && \
-    cd /
-
-# Install bb (barretenberg)
-RUN curl -L https://raw.githubusercontent.com/AztecProtocol/aztec-packages/refs/heads/next/barretenberg/bbup/install | bash && \
-    chmod +x ~/.bb/bbup && \
-    ~/.bb/bbup && \
-    mv ~/.bb /usr/local/ && \
-    find /usr/local/.bb -type f -executable | while read binary; do \
-        ln -sf "$binary" /usr/local/bin/$(basename "$binary"); \
-    done
-
-# Add noir and bb binaries to PATH
-ENV PATH="/usr/local/.nargo/bin:/usr/local/.bb/bin:${PATH}"
-
-# Verify installations  
-RUN echo "Checking installed binaries..." && \
-    ls -la /usr/local/bin/ | grep -E "(nargo|bb)" && \
-    nargo --version && \
-    echo "Note: bb binary installed at $(which bb || echo 'not found')"
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
 
 # Install production dependencies + tsx for running TypeScript
 RUN npm install --omit=dev && \
