@@ -17,6 +17,7 @@ if (typeof (globalThis as any).indexedDB === "undefined") {
 
 import express, { text } from "express";
 import type { Request, Response } from "express";
+import { InputsGenerator } from "./prove";
 const app = express();
 const port = 3000;
 
@@ -35,8 +36,9 @@ export const prove = async (
     baseUrl: "https://dev-conductor.zk.email",
     logging: { enabled: true, level: "debug" },
   });
+
   const blueprint = await sdk.getBlueprint(blueprintSlug);
-  const prover = blueprint.createProver({ isLocal: true });
+  const inputsGenerator = new InputsGenerator(blueprint);
 
   const externalInputs = [
     {
@@ -45,24 +47,21 @@ export const prove = async (
     },
   ];
 
-  const noirWasm = await initNoirWasm();
+  const proofInputs = await inputsGenerator.generateInputs(
+    rawEmail,
+    externalInputs
+  );
 
-  const proof = await prover.generateProof(rawEmail, externalInputs, {
-    noirWasm,
-  });
-
-  const verification = await blueprint.verifyProof(proof, { noirWasm });
-
-  return { proof, verification };
+  return { proofInputs };
 };
 
 export const proveEndpoint = async (req: Request, res: Response) => {
-  const { proof, verification } = await prove(
+  const { proofInputs } = await prove(
     req.body.rawEmail,
     req.body.blueprintSlug,
     req.body.command
   );
-  res.status(200).json({ proof, verification });
+  res.status(200).json({ proofInputs });
 };
 
 app.post("/prove", proveEndpoint);

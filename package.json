@@ -4,17 +4,17 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start:node": "NODE_OPTIONS='--max-old-space-size=16384' tsx src/server.ts"
+    "start": "NODE_OPTIONS='--max-old-space-size=16384' tsx src/server.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/express": "^5.0.5",
-    "@zk-email/sdk": "3.0.0-nightly.8"
+    "@types/express": "^5.0.5"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
+    "@zk-email/sdk": "3.0.0-nightly.8",
     "@types/jest": "^30.0.0",
     "@types/supertest": "^6.0.3",
     "express": "^5.1.0",
@@ -23,6 +23,9 @@
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.5",
     "tsx": "^4.20.6",
-    "web-worker": "^1.5.0"
+    "web-worker": "^1.5.0",
+    "@aztec/bb.js": "0.82.2",
+    "@zk-email/relayer-utils": "0.4.66-4",
+    "@noir-lang/noir_js": "1.0.0-beta.6"
   }
 }
