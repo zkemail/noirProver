@@ -136,14 +136,14 @@ async function prepareCircuit(blueprint: any): Promise<string> {
 
   console.log("Running compile.sh...");
   try {
-    await $`cd "${circuitDir}" && ./compile.sh > /dev/null 2>&1`;
+    await execAsync(`cd "${circuitDir}" && ./compile.sh`);
     // Create marker file to indicate compilation is complete
     fs.writeFileSync(compiledMarker, new Date().toISOString());
     console.log("Circuit compiled successfully");
   } catch (error: any) {
     console.error("Failed to compile circuit:", error);
-    console.error("Error stdout:", error.stdout);
-    console.error("Error stderr:", error.stderr);
+    if (error.stdout) console.error("Error stdout:", error.stdout);
+    if (error.stderr) console.error("Error stderr:", error.stderr);
 
     // Also log the compile.log file if it exists
     const compileLogPath = path.join(circuitDir, "compile.log");
@@ -203,7 +203,7 @@ export const getProof = async (
   let proofResult: any;
   try {
     // Run bash script with explicit PATH, redirect output to avoid hanging
-    await $`cd "${circuitPath}" && ./prove.sh > /dev/null 2>&1`;
+    await execAsync(`cd "${circuitPath}" && ./prove.sh`);
 
     // Read the generated proof files
     const proofFieldsPath = path.join(
