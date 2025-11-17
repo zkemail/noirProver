@@ -14,11 +14,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 18G
-          cpus: "4"
+          memory: 64G
+          cpus: "16"
         reservations:
-          memory: 16G
-          cpus: "2"
+          memory: 32G
+          cpus: "4"
     restart: unless-stopped
     healthcheck:
       test:
