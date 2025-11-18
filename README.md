@@ -29,6 +29,40 @@ docker-compose up --build
 
 This will run the server on localhost:3000
 
+# Deploying to Kubernetes
+
+The `k8s/` directory contains all necessary Kubernetes manifests to deploy this service:
+
+1. **Set up the Gmail OAuth secrets:**
+
+```bash
+# Option 1: Use kubectl directly
+kubectl create secret generic noir-prover-gmail-secrets \
+  --from-literal=GMAIL_CLIENT_ID="your-client-id.apps.googleusercontent.com" \
+  --from-literal=GMAIL_CLIENT_SECRET="your-client-secret" \
+  --from-literal=GMAIL_REDIRECT_URI="https://your-domain.com/gmail/callback" \
+  --namespace=noir-prover
+
+# Option 2: Copy the template and edit it
+cp k8s/00-backend-secrets.template.yaml k8s/00-backend-secrets.yaml
+# Edit the file with your actual credentials
+kubectl apply -f k8s/00-backend-secrets.yaml
+```
+
+2. **Apply all Kubernetes resources:**
+
+```bash
+# Apply in order
+kubectl apply -f k8s/00-namespace.yaml
+kubectl apply -f k8s/00-backend-secrets.yaml
+kubectl apply -f k8s/01-backend.yaml
+kubectl apply -f k8s/02-cert.yaml
+kubectl apply -f k8s/03-ingress.yaml
+kubectl apply -f k8s/04-backend-config.yaml
+```
+
+**Note:** The actual secrets file (`00-backend-secrets.yaml`) is gitignored. Only the template file is committed to the repository for security.
+
 # API Endpoints
 
 ## POST /prove

@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: noir-prover
-          image: zkfr/noir-prover:v0.10
+          image: zkfr/noir-prover:v0.11
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
@@ -30,6 +30,21 @@ spec:
               value: "--max-old-space-size=16384"
             - name: PORT
               value: "3000"
+            - name: GMAIL_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: noir-prover-gmail-secrets
+                  key: GMAIL_CLIENT_ID
+            - name: GMAIL_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noir-prover-gmail-secrets
+                  key: GMAIL_CLIENT_SECRET
+            - name: GMAIL_REDIRECT_URI
+              valueFrom:
+                secretKeyRef:
+                  name: noir-prover-gmail-secrets
+                  key: GMAIL_REDIRECT_URI
           resources:
             requests:
               memory: "32Gi"
