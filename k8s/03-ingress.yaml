@@ -7,6 +7,8 @@ metadata:
     kubernetes.io/ingress.global-static-ip-name: noir-prover-ip
     networking.gke.io/managed-certificates: noir-prover-cert
     ingressClassName: "gce"
+    # Increase timeout for long-running ZK proof operations (3600 seconds = 1 hour)
+    cloud.google.com/backend-config: "noir-prover-backend-config"
 spec:
   rules:
     - host: "noir-prover.zk.email"

@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: noir-prover
-          image: zkfr/noir-prover:latest
+          image: zkfr/noir-prover:v0.9
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
@@ -41,23 +41,23 @@ spec:
             httpGet:
               path: /health
               port: 3000
-            initialDelaySeconds: 40
-            periodSeconds: 30
-            timeoutSeconds: 10
-            failureThreshold: 3
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 30
+            failureThreshold: 10
           readinessProbe:
             httpGet:
               path: /health
               port: 3000
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
-          # Security context for non-root user
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 10
+          # Security context - running as root for file permissions
           securityContext:
-            runAsNonRoot: true
-            runAsUser: 1001
-            runAsGroup: 1001
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
             capabilities:
@@ -71,6 +71,8 @@ metadata:
   namespace: noir-prover
   labels:
     app: noir-prover
+  annotations:
+    cloud.google.com/backend-config: '{"default": "noir-prover-backend-config"}'
 spec:
   type: ClusterIP
   selector:

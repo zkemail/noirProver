@@ -33,8 +33,16 @@ const port = 3000;
 // Circuit cache directory
 const CIRCUITS_DIR = path.join(process.cwd(), ".cache", "circuits");
 
-// Middleware to parse JSON request bodies
-app.use(express.json());
+// Middleware to parse JSON request bodies with increased limits
+app.use(express.json({ limit: "50mb" }));
+
+// Increase timeouts for long-running ZK proof operations
+app.use((req, res, next) => {
+  // Set timeout to 2 hours (7200000 ms) to match load balancer
+  req.setTimeout(7200000);
+  res.setTimeout(7200000);
+  next();
+});
 
 // Ensure circuits directory exists
 function ensureCircuitsDir() {
@@ -203,14 +211,31 @@ export const getProof = async (
       fs.readFileSync(publicInputsFieldsPath, "utf-8")
     );
 
+    console.log("Proof fields:", proofFields);
+    console.log("Public inputs fields:", publicInputsFields);
+
     return {
       proof: proofFields,
       publicInputs: publicInputsFields,
     };
+  } catch (error) {
+    console.error("Error in getProof:", error);
+    console.error(
+      "Error stack:",
+      error instanceof Error ? error.stack : "No stack trace available"
+    );
+    throw error; // Re-throw to be handled by the endpoint
   } finally {
     // Clean up working directory
-    fs.rmSync(workingDir, { recursive: true, force: true });
-    console.log(`Cleaned up working directory: ${workingDir}`);
+    try {
+      fs.rmSync(workingDir, { recursive: true, force: true });
+      console.log(`Cleaned up working directory: ${workingDir}`);
+    } catch (cleanupError) {
+      console.error(
+        `Error cleaning up working directory ${workingDir}:`,
+        cleanupError
+      );
+    }
   }
 };
 
@@ -246,6 +271,11 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Noir Prover listening on port http://localhost:${port}`);
 });
+
+// Set server timeout to 2 hours (7200000 ms) for long-running proofs
+server.timeout = 7200000;
+server.keepAliveTimeout = 7200000;
+server.headersTimeout = 7210000; // Slightly higher than keepAliveTimeout

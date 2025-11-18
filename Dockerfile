@@ -1,5 +1,5 @@
-# Base image
-FROM ubuntu:jammy
+# Base image with GLIBC 2.39 (>= 2.38 required)
+FROM ubuntu:noble
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -17,6 +17,7 @@ RUN apt update && \
     zip \
     unzip \
     jq \
+    xz-utils \
     protobuf-compiler \
     libprotobuf-dev \
     && \
@@ -36,9 +37,10 @@ RUN bbup --version 0.84.0
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Install Node.js and Yarn
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt install -y nodejs && \
+# Install Node.js 22.x directly from official binary
+RUN curl -fsSL https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.xz -o node.tar.xz && \
+    tar -xf node.tar.xz -C /usr/local --strip-components=1 && \
+    rm node.tar.xz && \
     npm install -g yarn snarkjs
 
 WORKDIR /app
@@ -61,8 +63,6 @@ RUN npm install --omit=dev && \
 # Copy source code
 COPY src ./src
 COPY .cache/ .cache/
-
-RUN apt install libc6
 
 # Expose port
 EXPOSE 3000
