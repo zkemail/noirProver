@@ -2,6 +2,23 @@
 
 Minimal server side noir prover
 
+# Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```env
+# Gmail OAuth Configuration
+# Get these credentials from Google Cloud Console: https://console.cloud.google.com/
+# 1. Create a new project or select existing one
+# 2. Enable Gmail API
+# 3. Create OAuth 2.0 credentials (Web application)
+# 4. Add authorized redirect URI: http://localhost:3000/gmail/callback (or your production URL)
+
+GMAIL_CLIENT_ID=your_client_id_here.apps.googleusercontent.com
+GMAIL_CLIENT_SECRET=your_client_secret_here
+GMAIL_REDIRECT_URI=http://localhost:3000/gmail/callback
+```
+
 # Running using docker
 
 make sure you have docker installed
@@ -12,6 +29,12 @@ docker-compose up --build
 
 This will run the server on localhost:3000
 
+# API Endpoints
+
+## POST /prove
+
+Generate a proof for an email. This is the main proving endpoint.
+
 try it out using this sample request:
 
 ```
@@ -21,3 +44,87 @@ try it out using this sample request:
   "command": "command"
 }
 ```
+
+## GET /gmail/auth
+
+Initiates the Gmail OAuth flow. Redirects the user to Google's OAuth consent screen where they can authorize the application to access their Gmail account.
+
+**Usage:**
+
+1. Navigate to `http://localhost:3000/gmail/auth` in your browser
+2. Complete the Google OAuth flow
+3. After authorization, you'll be redirected to the callback endpoint
+
+## GET /gmail/callback
+
+OAuth callback endpoint. This is automatically called by Google after the user authorizes the application. It exchanges the authorization code for access tokens, fetches the first Discord password reset email, and generates a ZK proof.
+
+**Note:** This endpoint may take several minutes to complete as it performs ZK proof generation.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "email": {
+    "id": "message_id",
+    "raw": "raw email content..."
+  },
+  "proof": ["0x...", "0x...", ...],
+  "publicInputs": ["0x...", "0x...", ...]
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "success": false,
+  "error": "No Discord password reset email found"
+}
+```
+
+## POST /gmail/fetch-discord-reset
+
+Fetches the Discord password reset email using a provided access token and generates a ZK proof. Useful if you already have an access token from a previous OAuth flow.
+
+**Note:** This endpoint may take several minutes to complete as it performs ZK proof generation.
+
+**Request Body:**
+
+```json
+{
+  "accessToken": "ya29.a0AfH6..."
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "email": {
+    "id": "message_id",
+    "raw": "raw email content..."
+  },
+  "proof": ["0x...", "0x...", ...],
+  "publicInputs": ["0x...", "0x...", ...]
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "success": false,
+  "error": "No Discord password reset email found"
+}
+```
+
+### Email Criteria
+
+The endpoints search for emails matching:
+
+- **From:** discord.com
+- **Subject:** "Password Reset Request for Discord"
+- Returns the first (most recent) matching email

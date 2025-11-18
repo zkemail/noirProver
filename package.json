@@ -23,6 +23,7 @@
     "@zk-email/sdk": "3.0.0-nightly.11",
     "express": "^5.1.0",
     "fake-indexeddb": "^6.2.5",
+    "googleapis": "^166.0.0",
     "jest": "^30.2.0",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.5",

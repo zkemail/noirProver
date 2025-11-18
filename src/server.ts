@@ -25,6 +25,7 @@ import { promisify } from "util";
 import { exec } from "child_process";
 import TOML from "@iarna/toml";
 import { randomUUID } from "crypto";
+import { google } from "googleapis";
 
 const execAsync = promisify(exec);
 const app = express();
@@ -32,6 +33,34 @@ const port = 3000;
 
 // Circuit cache directory
 const CIRCUITS_DIR = path.join(process.cwd(), ".cache", "circuits");
+
+// Gmail OAuth2 configuration
+// Note: Bun automatically loads .env file - no need for dotenv package
+const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
+const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
+const GMAIL_REDIRECT_URI =
+  process.env.GMAIL_REDIRECT_URI || "http://localhost:3000/gmail/callback";
+
+// Validate Gmail OAuth credentials are set
+if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET) {
+  console.warn(
+    "⚠️  Warning: GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET not set in .env"
+  );
+  console.warn(
+    "   Gmail OAuth endpoints will not work until these are configured"
+  );
+  console.warn("   See README.md for setup instructions");
+}
+
+// Initialize OAuth2 client
+const oauth2Client = new google.auth.OAuth2(
+  GMAIL_CLIENT_ID,
+  GMAIL_CLIENT_SECRET,
+  GMAIL_REDIRECT_URI
+);
+
+// Scopes required for Gmail API
+const GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 
 // Middleware to parse JSON request bodies with increased limits
 app.use(express.json({ limit: "50mb" }));
@@ -281,6 +310,186 @@ export const proveEndpoint = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Helper function to fetch Discord password reset email from Gmail
+async function fetchDiscordResetEmail(accessToken: string) {
+  try {
+    // Set credentials for this request
+    const auth = new google.auth.OAuth2(
+      GMAIL_CLIENT_ID,
+      GMAIL_CLIENT_SECRET,
+      GMAIL_REDIRECT_URI
+    );
+    auth.setCredentials({ access_token: accessToken });
+
+    const gmail = google.gmail({ version: "v1", auth });
+
+    // Search for emails from Discord with the password reset subject
+    const response = await gmail.users.messages.list({
+      userId: "me",
+      q: 'from:discord.com subject:"Password Reset Request for Discord"',
+      maxResults: 1,
+    });
+
+    if (!response.data.messages || response.data.messages.length === 0) {
+      return null;
+    }
+
+    const messageId = response.data.messages[0]?.id;
+    if (!messageId) {
+      return null;
+    }
+
+    // Fetch the full email message
+    const message = await gmail.users.messages.get({
+      userId: "me",
+      id: messageId,
+      format: "raw",
+    });
+
+    // Return the raw email
+    if (message.data.raw) {
+      // Decode base64url encoded email
+      const rawEmail = Buffer.from(message.data.raw, "base64url").toString(
+        "utf-8"
+      );
+      return {
+        id: messageId,
+        raw: rawEmail,
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error fetching Discord reset email:", error);
+    throw error;
+  }
+}
+
+// Gmail OAuth endpoints
+app.get("/gmail/auth", (req: Request, res: Response) => {
+  // Generate OAuth URL
+  const authUrl = oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    scope: GMAIL_SCOPES,
+    prompt: "consent",
+  });
+
+  res.redirect(authUrl);
+});
+
+app.get("/gmail/callback", async (req: Request, res: Response) => {
+  try {
+    const code = req.query.code as string;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        error: "Authorization code not provided",
+      });
+    }
+
+    // Exchange authorization code for tokens
+    const { tokens } = await oauth2Client.getToken(code);
+
+    if (!tokens.access_token) {
+      return res.status(500).json({
+        success: false,
+        error: "Failed to obtain access token",
+      });
+    }
+
+    // Fetch the Discord password reset email
+    console.log("Fetching Discord password reset email...");
+    const email = await fetchDiscordResetEmail(tokens.access_token);
+
+    if (!email) {
+      return res.status(404).json({
+        success: false,
+        error: "No Discord password reset email found",
+      });
+    }
+
+    console.log("Email fetched successfully, generating proof...");
+
+    // Generate proof for the Discord email
+    // Using "zkemail/discord@v1" blueprint and "command" as the external input
+    const proofResult = await getProof(
+      email.raw,
+      "zkemail/discord@v1",
+      "command"
+    );
+
+    console.log("Proof generated successfully");
+
+    res.status(200).json({
+      success: true,
+      email: {
+        id: email.id,
+        raw: email.raw,
+      },
+      proof: proofResult.proof,
+      publicInputs: proofResult.publicInputs,
+    });
+  } catch (error) {
+    console.error("Error in Gmail callback:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    });
+  }
+});
+
+// Endpoint to fetch Discord reset email with an existing access token
+app.post("/gmail/fetch-discord-reset", async (req: Request, res: Response) => {
+  try {
+    const { accessToken } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        error: "Access token is required",
+      });
+    }
+
+    console.log("Fetching Discord password reset email...");
+    const email = await fetchDiscordResetEmail(accessToken);
+
+    if (!email) {
+      return res.status(404).json({
+        success: false,
+        error: "No Discord password reset email found",
+      });
+    }
+
+    console.log("Email fetched successfully, generating proof...");
+
+    // Generate proof for the Discord email
+    const proofResult = await getProof(
+      email.raw,
+      "zkemail/discord@v1",
+      "command"
+    );
+
+    console.log("Proof generated successfully");
+
+    res.status(200).json({
+      success: true,
+      email: {
+        id: email.id,
+        raw: email.raw,
+      },
+      proof: proofResult.proof,
+      publicInputs: proofResult.publicInputs,
+    });
+  } catch (error) {
+    console.error("Error fetching Discord reset email:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    });
+  }
+});
 
 app.post("/prove", proveEndpoint);
 
