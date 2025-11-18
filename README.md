@@ -98,6 +98,10 @@ The UI updates in real-time as each step completes, providing visual feedback wi
 
 Each proof generation creates a unique ID (UUID) and stores the complete proof result on the server in `.cache/proofs/`. The Proof ID is displayed in the UI and can be used to retrieve the proof later via the `/proof/:id` endpoint.
 
+**Automatic Redirect:**
+
+After successful proof generation, the page will automatically redirect to `https://pay.zk.email/claim?proofId={proofId}` after 2.5 seconds, allowing users to see the success message before being redirected to the claim page.
+
 ## POST /gmail/fetch-email
 
 Fetches an email using a provided access token with a custom search query and generates a ZK proof. Useful if you already have an access token from a previous OAuth flow.

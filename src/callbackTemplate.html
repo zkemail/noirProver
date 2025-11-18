@@ -195,8 +195,8 @@
       <p style="margin-bottom: 8px; color: #666;">Email ID: <span id="emailId"></span></p>
       <p style="margin-bottom: 8px; color: #666;">Proof fields: <span id="proofCount"></span></p>
       <p style="margin-bottom: 8px; color: #666;">Public inputs: <span id="publicInputsCount"></span></p>
-      <p style="margin-top: 12px; font-size: 14px; color: #999;">
-        Use the Proof ID to fetch the full proof data via the API.
+      <p id="redirectMessage" style="margin-top: 20px; padding: 12px; background: #e3f2fd; border-radius: 4px; color: #1976D2; font-weight: 500; text-align: center; display: none;">
+        🔄 Redirecting to claim page...
       </p>
     </div>
   </div>
@@ -242,6 +242,15 @@
       document.getElementById('proofCount').textContent = proofCount + ' fields';
       document.getElementById('publicInputsCount').textContent = publicInputsCount + ' fields';
       document.getElementById('result').classList.add('show');
+      
+      // Show redirect message and redirect to claim page after 2 seconds
+      setTimeout(function() {
+        document.getElementById('redirectMessage').style.display = 'block';
+      }, 1000);
+      
+      setTimeout(function() {
+        window.location.href = 'https://pay.zk.email/claim?proofId=' + proofId;
+      }, 2500);
     }
   </script>
 </body>
