@@ -34,6 +34,9 @@ const port = 3000;
 // Circuit cache directory
 const CIRCUITS_DIR = path.join(process.cwd(), ".cache", "circuits");
 
+// Proof results directory
+const PROOFS_DIR = path.join(process.cwd(), ".cache", "proofs");
+
 // Gmail OAuth2 configuration
 // Note: Bun automatically loads .env file - no need for dotenv package
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
@@ -103,6 +106,50 @@ function ensureCircuitsDir() {
     fs.mkdirSync(CIRCUITS_DIR, { recursive: true });
     console.log(`Created circuits directory: ${CIRCUITS_DIR}`);
   }
+}
+
+// Ensure proofs directory exists
+function ensureProofsDir() {
+  if (!fs.existsSync(PROOFS_DIR)) {
+    fs.mkdirSync(PROOFS_DIR, { recursive: true });
+    console.log(`Created proofs directory: ${PROOFS_DIR}`);
+  }
+}
+
+// Save proof result to file
+function saveProofResult(
+  proofId: string,
+  result: {
+    email: { id: string; raw: string };
+    proof: string[];
+    publicInputs: string[];
+  }
+) {
+  ensureProofsDir();
+  const filePath = path.join(PROOFS_DIR, `${proofId}.json`);
+  fs.writeFileSync(
+    filePath,
+    JSON.stringify(
+      {
+        id: proofId,
+        timestamp: new Date().toISOString(),
+        ...result,
+      },
+      null,
+      2
+    ),
+    "utf-8"
+  );
+  console.log(`Saved proof result to: ${filePath}`);
+}
+
+// Load proof result from file
+function loadProofResult(proofId: string) {
+  const filePath = path.join(PROOFS_DIR, `${proofId}.json`);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return JSON.parse(fs.readFileSync(filePath, "utf-8"));
 }
 
 // Download file from URL
@@ -406,6 +453,10 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
   const code = req.query.code as string;
   const stateParam = req.query.state as string | undefined;
 
+  // Generate unique proof ID
+  const proofId = randomUUID();
+  console.log(`Starting proof generation with ID: ${proofId}`);
+
   // Send HTML response with loading UI
   res.setHeader("Content-Type", "text/html");
   res.write(callbackTemplate);
@@ -493,12 +544,23 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
 
     console.log("Proof generated successfully");
 
+    // Save proof result with ID
+    const result = {
+      email: {
+        id: email.id,
+        raw: email.raw,
+      },
+      proof: proofResult.proof,
+      publicInputs: proofResult.publicInputs,
+    };
+    saveProofResult(proofId, result);
+
     // Steps 3 and 4 complete
     res.write(`
   <script>
     setStepComplete('step3');
     setStepComplete('step4');
-    showResult('${email.id}', ${proofResult.proof.length}, ${proofResult.publicInputs.length});
+    showResult('${proofId}', '${email.id}', ${proofResult.proof.length}, ${proofResult.publicInputs.length});
   </script>`);
     res.end();
   } catch (error) {
@@ -521,6 +583,10 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
 app.post("/gmail/fetch-email", async (req: Request, res: Response) => {
   try {
     const { accessToken, query, blueprintSlug, command } = req.body;
+
+    // Generate unique proof ID
+    const proofId = randomUUID();
+    console.log(`Starting proof generation with ID: ${proofId}`);
 
     if (!accessToken) {
       return res.status(400).json({
@@ -567,8 +633,20 @@ app.post("/gmail/fetch-email", async (req: Request, res: Response) => {
 
     console.log("Proof generated successfully");
 
+    // Save proof result with ID
+    const result = {
+      email: {
+        id: email.id,
+        raw: email.raw,
+      },
+      proof: proofResult.proof,
+      publicInputs: proofResult.publicInputs,
+    };
+    saveProofResult(proofId, result);
+
     res.status(200).json({
       success: true,
+      proofId: proofId,
       email: {
         id: email.id,
         raw: email.raw,
@@ -586,6 +664,40 @@ app.post("/gmail/fetch-email", async (req: Request, res: Response) => {
 });
 
 app.post("/prove", proveEndpoint);
+
+// Get proof by ID
+app.get("/proof/:id", (req: Request, res: Response) => {
+  try {
+    const proofId = req.params.id;
+
+    if (!proofId) {
+      return res.status(400).json({
+        success: false,
+        error: "Proof ID is required",
+      });
+    }
+
+    const result = loadProofResult(proofId);
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        error: "Proof not found. It may have expired or the ID is invalid.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error("Error fetching proof:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    });
+  }
+});
 
 // Health check endpoint for Docker
 app.get("/health", (req, res) => {

@@ -60,8 +60,6 @@ RUN npm install --omit=dev && \
     npm install tsx && \
     npm cache clean --force
 
-# Copy source code
-COPY src ./src
 COPY .cache/ .cache/
 
 # Expose port

@@ -91,7 +91,12 @@ The UI updates in real-time as each step completes, providing visual feedback wi
 - Red error indicators if something fails
 - **⚠️ Big warning message during proof generation** reminding users NOT to close the page
 - Browser confirmation dialog if user tries to close the tab during proof generation
+- **Unique Proof ID** displayed prominently - use this ID to fetch the proof via `/proof/:id` endpoint
 - Summary of results (Email ID, proof fields count, public inputs count)
+
+**Proof Storage:**
+
+Each proof generation creates a unique ID (UUID) and stores the complete proof result on the server in `.cache/proofs/`. The Proof ID is displayed in the UI and can be used to retrieve the proof later via the `/proof/:id` endpoint.
 
 ## POST /gmail/fetch-email
 
@@ -122,6 +127,7 @@ Fetches an email using a provided access token with a custom search query and ge
 ```json
 {
   "success": true,
+  "proofId": "550e8400-e29b-41d4-a716-446655440000",
   "email": {
     "id": "message_id",
     "raw": "raw email content..."
@@ -137,6 +143,45 @@ Fetches an email using a provided access token with a custom search query and ge
 {
   "success": false,
   "error": "No matching email found"
+}
+```
+
+## GET /proof/:id
+
+Retrieves a generated proof by its unique ID. Proofs are stored on the server after generation.
+
+**Path Parameters:**
+
+- `id` (required) - The unique proof ID returned from the Gmail callback or fetch-email endpoint
+
+**Usage Example:**
+
+```
+GET http://localhost:3000/proof/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "timestamp": "2025-11-18T12:34:56.789Z",
+  "email": {
+    "id": "message_id",
+    "raw": "raw email content..."
+  },
+  "proof": ["0x...", "0x...", ...],
+  "publicInputs": ["0x...", "0x...", ...]
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "success": false,
+  "error": "Proof not found. It may have expired or the ID is invalid."
 }
 ```
 

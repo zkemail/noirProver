@@ -189,9 +189,15 @@
     <div id="error" class="error-message"></div>
     <div id="result" class="result">
       <h3>✨ Proof Generated</h3>
+      <p style="margin-bottom: 12px; color: #666; font-weight: 600;">
+        Proof ID: <span id="proofId" style="font-family: monospace; color: #2196F3;"></span>
+      </p>
       <p style="margin-bottom: 8px; color: #666;">Email ID: <span id="emailId"></span></p>
       <p style="margin-bottom: 8px; color: #666;">Proof fields: <span id="proofCount"></span></p>
       <p style="margin-bottom: 8px; color: #666;">Public inputs: <span id="publicInputsCount"></span></p>
+      <p style="margin-top: 12px; font-size: 14px; color: #999;">
+        Use the Proof ID to fetch the full proof data via the API.
+      </p>
     </div>
   </div>
   <script>
@@ -229,8 +235,9 @@
       // Allow page close after completion
       window.onbeforeunload = null;
     }
-    function showResult(emailId, proofCount, publicInputsCount) {
+    function showResult(proofId, emailId, proofCount, publicInputsCount) {
       hideWarning();
+      document.getElementById('proofId').textContent = proofId;
       document.getElementById('emailId').textContent = emailId;
       document.getElementById('proofCount').textContent = proofCount + ' fields';
       document.getElementById('publicInputsCount').textContent = publicInputsCount + ' fields';
