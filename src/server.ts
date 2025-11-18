@@ -62,6 +62,12 @@ const oauth2Client = new google.auth.OAuth2(
 // Scopes required for Gmail API
 const GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 
+// Load HTML template for callback UI
+const callbackTemplate = fs.readFileSync(
+  path.join(process.cwd(), "src", "callbackTemplate.html"),
+  "utf-8"
+);
+
 // Middleware to parse JSON request bodies with increased limits
 app.use(express.json({ limit: "50mb" }));
 
@@ -397,96 +403,124 @@ app.get("/gmail/auth", (req: Request, res: Response) => {
 });
 
 app.get("/gmail/callback", async (req: Request, res: Response) => {
-  try {
-    const code = req.query.code as string;
-    const stateParam = req.query.state as string | undefined;
+  const code = req.query.code as string;
+  const stateParam = req.query.state as string | undefined;
 
+  // Send HTML response with loading UI
+  res.setHeader("Content-Type", "text/html");
+  res.write(callbackTemplate);
+
+  try {
     if (!code) {
-      return res.status(400).json({
-        success: false,
-        error: "Authorization code not provided",
-      });
+      res.write(`
+  <script>
+    setStepError('step1');
+    showError('Authorization code not provided');
+  </script>`);
+      return res.end();
     }
 
-    // Parse state parameter to get custom query/blueprint/command
+    // Parse state parameter
     let query: string | undefined;
-    let blueprintSlug = "zkemail/discord@v1";
-    let command = "command";
+    let blueprintSlug: string | undefined;
+    let command: string | undefined;
 
     if (stateParam) {
       try {
         const state = JSON.parse(stateParam);
         query = state.query;
-        blueprintSlug = state.blueprint || blueprintSlug;
-        command = state.command || command;
+        blueprintSlug = state.blueprint;
+        command = state.command;
       } catch (e) {
         console.warn("Failed to parse state parameter:", e);
       }
     }
 
-    if (!query) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "Gmail search query is required. Please provide a query parameter.",
-      });
+    if (!query || !blueprintSlug || !command) {
+      res.write(`
+  <script>
+    setStepError('step1');
+    showError('Missing required parameters: query, blueprint, or command');
+  </script>`);
+      return res.end();
     }
 
     // Exchange authorization code for tokens
     const { tokens } = await oauth2Client.getToken(code);
 
     if (!tokens.access_token) {
-      return res.status(500).json({
-        success: false,
-        error: "Failed to obtain access token",
-      });
+      res.write(`
+  <script>
+    setStepError('step1');
+    showError('Failed to obtain access token');
+  </script>`);
+      return res.end();
     }
 
-    // Fetch email from Gmail with query
+    // Step 1 complete
+    res.write(`
+  <script>
+    setStepComplete('step1');
+    setStepActive('step2');
+  </script>
+`);
+
+    // Fetch email from Gmail
     console.log("Fetching email from Gmail...");
     const email = await fetchEmailFromGmail(tokens.access_token, query);
 
     if (!email) {
-      return res.status(404).json({
-        success: false,
-        error: "No matching email found",
-      });
+      res.write(`
+  <script>
+    setStepError('step2');
+    showError('No matching email found');
+  </script>`);
+      return res.end();
     }
+
+    // Step 2 complete
+    res.write(`
+  <script>
+    setStepComplete('step2');
+    setStepActive('step3');
+  </script>
+`);
 
     console.log("Email fetched successfully, generating proof...");
 
-    // Generate proof for the email
+    // Generate proof
     const proofResult = await getProof(email.raw, blueprintSlug, command);
 
     console.log("Proof generated successfully");
 
-    res.status(200).json({
-      success: true,
-      email: {
-        id: email.id,
-        raw: email.raw,
-      },
-      proof: proofResult.proof,
-      publicInputs: proofResult.publicInputs,
-    });
+    // Steps 3 and 4 complete
+    res.write(`
+  <script>
+    setStepComplete('step3');
+    setStepComplete('step4');
+    showResult('${email.id}', ${proofResult.proof.length}, ${proofResult.publicInputs.length});
+  </script>`);
+    res.end();
   } catch (error) {
     console.error("Error in Gmail callback:", error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
-    });
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    res.write(`
+  <script>
+    setStepError('step1');
+    setStepError('step2');
+    setStepError('step3');
+    setStepError('step4');
+    showError('Error: ${errorMessage.replace(/'/g, "\\'")}');
+  </script>`);
+    res.end();
   }
 });
 
 // Endpoint to fetch email with an existing access token
 app.post("/gmail/fetch-email", async (req: Request, res: Response) => {
   try {
-    const {
-      accessToken,
-      query,
-      blueprintSlug = "zkemail/discord@v1",
-      command = "command",
-    } = req.body;
+    const { accessToken, query, blueprintSlug, command } = req.body;
 
     if (!accessToken) {
       return res.status(400).json({
@@ -499,6 +533,20 @@ app.post("/gmail/fetch-email", async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         error: "Gmail search query is required",
+      });
+    }
+
+    if (!blueprintSlug) {
+      return res.status(400).json({
+        success: false,
+        error: "Blueprint slug is required",
+      });
+    }
+
+    if (!command) {
+      return res.status(400).json({
+        success: false,
+        error: "Command is required",
       });
     }
 

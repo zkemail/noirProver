@@ -52,27 +52,15 @@ Initiates the Gmail OAuth flow. Redirects the user to Google's OAuth consent scr
 **Query Parameters:**
 
 - `query` (required) - Gmail search query
-- `blueprint` (optional) - Blueprint slug for proof generation (defaults to `zkemail/discord@v1`)
-- `command` (optional) - External input command for proof (defaults to `command`)
+- `blueprint` (required) - Blueprint slug for proof generation
+- `command` (required) - External input command for proof
 
 **Usage Examples:**
 
 Discord password reset:
 
 ```
-http://localhost:3000/gmail/auth?query=from:discord.com subject:"Password Reset Request for Discord"
-```
-
-GitHub verification email:
-
-```
-http://localhost:3000/gmail/auth?query=from:github.com subject:"verification"
-```
-
-Custom email search with custom blueprint:
-
-```
-http://localhost:3000/gmail/auth?query=from:amazon.com&blueprint=zkemail/amazon@v1&command=order
+http://localhost:3000/gmail/auth?query=from:discord.com subject:"Password Reset Request for Discord"&blueprint=zkemail/discord@v1&command=reset
 ```
 
 **Flow:**
@@ -89,26 +77,21 @@ OAuth callback endpoint. This is automatically called by Google after the user a
 
 **Response:**
 
-```json
-{
-  "success": true,
-  "email": {
-    "id": "message_id",
-    "raw": "raw email content..."
-  },
-  "proof": ["0x...", "0x...", ...],
-  "publicInputs": ["0x...", "0x...", ...]
-}
-```
+Returns an HTML page with a beautiful progress UI showing:
 
-**Error Response:**
+1. ✓ Authenticating with Gmail
+2. ✓ Fetching email from Gmail
+3. ✓ Generating ZK proof (this may take a few minutes)
+4. ✓ Proof generated successfully!
 
-```json
-{
-  "success": false,
-  "error": "No Discord password reset email found"
-}
-```
+The UI updates in real-time as each step completes, providing visual feedback with:
+
+- Animated loading states for active steps
+- Green checkmarks for completed steps
+- Red error indicators if something fails
+- **⚠️ Big warning message during proof generation** reminding users NOT to close the page
+- Browser confirmation dialog if user tries to close the tab during proof generation
+- Summary of results (Email ID, proof fields count, public inputs count)
 
 ## POST /gmail/fetch-email
 
@@ -122,8 +105,8 @@ Fetches an email using a provided access token with a custom search query and ge
 {
   "accessToken": "ya29.a0AfH6...",
   "query": "from:github.com subject:verification",
-  "blueprintSlug": "zkemail/discord@v1",
-  "command": "command"
+  "blueprintSlug": "zkemail/github@v1",
+  "command": "verify"
 }
 ```
 
@@ -131,8 +114,8 @@ Fetches an email using a provided access token with a custom search query and ge
 
 - `accessToken` (required) - Gmail API access token
 - `query` (required) - Gmail search query
-- `blueprintSlug` (optional) - Blueprint slug for proof generation (defaults to `zkemail/discord@v1`)
-- `command` (optional) - External input command for proof (defaults to `command`)
+- `blueprintSlug` (required) - Blueprint slug for proof generation
+- `command` (required) - External input command for proof
 
 **Response:**
 
