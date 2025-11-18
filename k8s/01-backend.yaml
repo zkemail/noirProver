@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: noir-prover
-          image: zkfr/noir-prover:v0.9
+          image: zkfr/noir-prover:v0.10
           imagePullPolicy: Always
           ports:
             - containerPort: 3000

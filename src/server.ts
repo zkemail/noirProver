@@ -36,6 +36,24 @@ const CIRCUITS_DIR = path.join(process.cwd(), ".cache", "circuits");
 // Middleware to parse JSON request bodies with increased limits
 app.use(express.json({ limit: "50mb" }));
 
+// Enable CORS for all origins
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Max-Age", "86400"); // 24 hours
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  next();
+});
+
 // Increase timeouts for long-running ZK proof operations
 app.use((req, res, next) => {
   // Set timeout to 2 hours (7200000 ms) to match load balancer
