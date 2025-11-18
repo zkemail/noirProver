@@ -311,8 +311,12 @@ export const proveEndpoint = async (req: Request, res: Response) => {
   }
 };
 
-// Helper function to fetch Discord password reset email from Gmail
-async function fetchDiscordResetEmail(accessToken: string) {
+// Helper function to fetch email from Gmail with dynamic query
+async function fetchEmailFromGmail(
+  accessToken: string,
+  query: string,
+  maxResults: number = 1
+) {
   try {
     // Set credentials for this request
     const auth = new google.auth.OAuth2(
@@ -324,11 +328,13 @@ async function fetchDiscordResetEmail(accessToken: string) {
 
     const gmail = google.gmail({ version: "v1", auth });
 
-    // Search for emails from Discord with the password reset subject
+    console.log(`Searching Gmail with query: ${query}`);
+
+    // Search for emails matching the query
     const response = await gmail.users.messages.list({
       userId: "me",
-      q: 'from:discord.com subject:"Password Reset Request for Discord"',
-      maxResults: 1,
+      q: query,
+      maxResults: maxResults,
     });
 
     if (!response.data.messages || response.data.messages.length === 0) {
@@ -361,18 +367,30 @@ async function fetchDiscordResetEmail(accessToken: string) {
 
     return null;
   } catch (error) {
-    console.error("Error fetching Discord reset email:", error);
+    console.error("Error fetching email from Gmail:", error);
     throw error;
   }
 }
 
 // Gmail OAuth endpoints
 app.get("/gmail/auth", (req: Request, res: Response) => {
-  // Generate OAuth URL
+  // Get optional query parameters to pass through OAuth flow
+  const query = req.query.query as string | undefined;
+  const blueprint = req.query.blueprint as string | undefined;
+  const command = req.query.command as string | undefined;
+
+  // Generate OAuth URL with state parameter to preserve custom parameters
+  const state = JSON.stringify({
+    query,
+    blueprint,
+    command,
+  });
+
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: "offline",
     scope: GMAIL_SCOPES,
     prompt: "consent",
+    state: state,
   });
 
   res.redirect(authUrl);
@@ -381,11 +399,36 @@ app.get("/gmail/auth", (req: Request, res: Response) => {
 app.get("/gmail/callback", async (req: Request, res: Response) => {
   try {
     const code = req.query.code as string;
+    const stateParam = req.query.state as string | undefined;
 
     if (!code) {
       return res.status(400).json({
         success: false,
         error: "Authorization code not provided",
+      });
+    }
+
+    // Parse state parameter to get custom query/blueprint/command
+    let query: string | undefined;
+    let blueprintSlug = "zkemail/discord@v1";
+    let command = "command";
+
+    if (stateParam) {
+      try {
+        const state = JSON.parse(stateParam);
+        query = state.query;
+        blueprintSlug = state.blueprint || blueprintSlug;
+        command = state.command || command;
+      } catch (e) {
+        console.warn("Failed to parse state parameter:", e);
+      }
+    }
+
+    if (!query) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Gmail search query is required. Please provide a query parameter.",
       });
     }
 
@@ -399,26 +442,21 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
       });
     }
 
-    // Fetch the Discord password reset email
-    console.log("Fetching Discord password reset email...");
-    const email = await fetchDiscordResetEmail(tokens.access_token);
+    // Fetch email from Gmail with query
+    console.log("Fetching email from Gmail...");
+    const email = await fetchEmailFromGmail(tokens.access_token, query);
 
     if (!email) {
       return res.status(404).json({
         success: false,
-        error: "No Discord password reset email found",
+        error: "No matching email found",
       });
     }
 
     console.log("Email fetched successfully, generating proof...");
 
-    // Generate proof for the Discord email
-    // Using "zkemail/discord@v1" blueprint and "command" as the external input
-    const proofResult = await getProof(
-      email.raw,
-      "zkemail/discord@v1",
-      "command"
-    );
+    // Generate proof for the email
+    const proofResult = await getProof(email.raw, blueprintSlug, command);
 
     console.log("Proof generated successfully");
 
@@ -440,10 +478,15 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
   }
 });
 
-// Endpoint to fetch Discord reset email with an existing access token
-app.post("/gmail/fetch-discord-reset", async (req: Request, res: Response) => {
+// Endpoint to fetch email with an existing access token
+app.post("/gmail/fetch-email", async (req: Request, res: Response) => {
   try {
-    const { accessToken } = req.body;
+    const {
+      accessToken,
+      query,
+      blueprintSlug = "zkemail/discord@v1",
+      command = "command",
+    } = req.body;
 
     if (!accessToken) {
       return res.status(400).json({
@@ -452,24 +495,27 @@ app.post("/gmail/fetch-discord-reset", async (req: Request, res: Response) => {
       });
     }
 
-    console.log("Fetching Discord password reset email...");
-    const email = await fetchDiscordResetEmail(accessToken);
+    if (!query) {
+      return res.status(400).json({
+        success: false,
+        error: "Gmail search query is required",
+      });
+    }
+
+    console.log("Fetching email from Gmail...");
+    const email = await fetchEmailFromGmail(accessToken, query);
 
     if (!email) {
       return res.status(404).json({
         success: false,
-        error: "No Discord password reset email found",
+        error: "No matching email found",
       });
     }
 
     console.log("Email fetched successfully, generating proof...");
 
-    // Generate proof for the Discord email
-    const proofResult = await getProof(
-      email.raw,
-      "zkemail/discord@v1",
-      "command"
-    );
+    // Generate proof for the email
+    const proofResult = await getProof(email.raw, blueprintSlug, command);
 
     console.log("Proof generated successfully");
 
@@ -483,7 +529,7 @@ app.post("/gmail/fetch-discord-reset", async (req: Request, res: Response) => {
       publicInputs: proofResult.publicInputs,
     });
   } catch (error) {
-    console.error("Error fetching Discord reset email:", error);
+    console.error("Error fetching email:", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error occurred",

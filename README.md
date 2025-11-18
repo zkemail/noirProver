@@ -49,15 +49,41 @@ try it out using this sample request:
 
 Initiates the Gmail OAuth flow. Redirects the user to Google's OAuth consent screen where they can authorize the application to access their Gmail account.
 
-**Usage:**
+**Query Parameters:**
 
-1. Navigate to `http://localhost:3000/gmail/auth` in your browser
+- `query` (required) - Gmail search query
+- `blueprint` (optional) - Blueprint slug for proof generation (defaults to `zkemail/discord@v1`)
+- `command` (optional) - External input command for proof (defaults to `command`)
+
+**Usage Examples:**
+
+Discord password reset:
+
+```
+http://localhost:3000/gmail/auth?query=from:discord.com subject:"Password Reset Request for Discord"
+```
+
+GitHub verification email:
+
+```
+http://localhost:3000/gmail/auth?query=from:github.com subject:"verification"
+```
+
+Custom email search with custom blueprint:
+
+```
+http://localhost:3000/gmail/auth?query=from:amazon.com&blueprint=zkemail/amazon@v1&command=order
+```
+
+**Flow:**
+
+1. Navigate to the endpoint with desired parameters
 2. Complete the Google OAuth flow
-3. After authorization, you'll be redirected to the callback endpoint
+3. After authorization, you'll be redirected to the callback endpoint with your search results
 
 ## GET /gmail/callback
 
-OAuth callback endpoint. This is automatically called by Google after the user authorizes the application. It exchanges the authorization code for access tokens, fetches the first Discord password reset email, and generates a ZK proof.
+OAuth callback endpoint. This is automatically called by Google after the user authorizes the application. It exchanges the authorization code for access tokens, fetches the email matching your query, and generates a ZK proof.
 
 **Note:** This endpoint may take several minutes to complete as it performs ZK proof generation.
 
@@ -84,9 +110,9 @@ OAuth callback endpoint. This is automatically called by Google after the user a
 }
 ```
 
-## POST /gmail/fetch-discord-reset
+## POST /gmail/fetch-email
 
-Fetches the Discord password reset email using a provided access token and generates a ZK proof. Useful if you already have an access token from a previous OAuth flow.
+Fetches an email using a provided access token with a custom search query and generates a ZK proof. Useful if you already have an access token from a previous OAuth flow.
 
 **Note:** This endpoint may take several minutes to complete as it performs ZK proof generation.
 
@@ -94,9 +120,19 @@ Fetches the Discord password reset email using a provided access token and gener
 
 ```json
 {
-  "accessToken": "ya29.a0AfH6..."
+  "accessToken": "ya29.a0AfH6...",
+  "query": "from:github.com subject:verification",
+  "blueprintSlug": "zkemail/discord@v1",
+  "command": "command"
 }
 ```
+
+**Request Body Parameters:**
+
+- `accessToken` (required) - Gmail API access token
+- `query` (required) - Gmail search query
+- `blueprintSlug` (optional) - Blueprint slug for proof generation (defaults to `zkemail/discord@v1`)
+- `command` (optional) - External input command for proof (defaults to `command`)
 
 **Response:**
 
@@ -117,14 +153,20 @@ Fetches the Discord password reset email using a provided access token and gener
 ```json
 {
   "success": false,
-  "error": "No Discord password reset email found"
+  "error": "No matching email found"
 }
 ```
 
-### Email Criteria
+### Gmail Search Query Examples
 
-The endpoints search for emails matching:
+You must provide a Gmail search query. You can use any Gmail search operators:
 
-- **From:** discord.com
-- **Subject:** "Password Reset Request for Discord"
-- Returns the first (most recent) matching email
+- **Discord password reset:** `from:discord.com subject:"Password Reset Request for Discord"`
+- **GitHub verification:** `from:github.com subject:verification`
+- **Amazon orders:** `from:amazon.com subject:order`
+- **Recent emails from specific sender:** `from:example.com newer_than:7d`
+- **Emails with attachments:** `from:example.com has:attachment`
+
+See [Gmail search operators](https://support.google.com/mail/answer/7190) for more query options.
+
+Returns the first (most recent) email matching the query.
