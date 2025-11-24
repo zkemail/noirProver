@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noir-prover
+  namespace: noir-prover
+  labels:
+    app: noir-prover
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: noir-prover
+  template:
+    metadata:
+      labels:
+        app: noir-prover
+    spec:
+      containers:
+        - name: noir-prover
+          image: zkfr/noir-prover:v0.12
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=16384"
+            - name: PORT
+              value: "3000"
+            - name: GMAIL_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: noir-prover-gmail-secrets
+                  key: GMAIL_CLIENT_ID
+            - name: GMAIL_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: noir-prover-gmail-secrets
+                  key: GMAIL_CLIENT_SECRET
+            - name: GMAIL_REDIRECT_URI
+              valueFrom:
+                secretKeyRef:
+                  name: noir-prover-gmail-secrets
+                  key: GMAIL_REDIRECT_URI
+          resources:
+            requests:
+              memory: "32Gi"
+              cpu: "4000m"
+            limits:
+              memory: "64Gi"
+              cpu: "16000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 30
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 10
+          # Security context - running as root for file permissions
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: noir-prover-service
+  namespace: noir-prover
+  labels:
+    app: noir-prover
+  annotations:
+    cloud.google.com/backend-config: '{"default": "noir-prover-backend-config"}'
+spec:
+  type: ClusterIP
+  selector:
+    app: noir-prover
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http

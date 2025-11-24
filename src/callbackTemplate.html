@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Proof Generator</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 24px;
+      text-align: center;
+    }
+    .step {
+      padding: 16px;
+      margin: 12px 0;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #f7f7f7;
+      transition: all 0.3s ease;
+    }
+    .step.active {
+      background: #e3f2fd;
+      border-left: 4px solid #2196F3;
+    }
+    .step.complete {
+      background: #e8f5e9;
+      border-left: 4px solid #4CAF50;
+    }
+    .step.error {
+      background: #ffebee;
+      border-left: 4px solid #f44336;
+    }
+    .step-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .step.active .step-icon {
+      background: #2196F3;
+      color: white;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    .step.complete .step-icon::after {
+      content: '✓';
+      color: #4CAF50;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .step.error .step-icon::after {
+      content: '✗';
+      color: #f44336;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    .step-text {
+      flex: 1;
+      color: #555;
+    }
+    .step.active .step-text { color: #1976D2; font-weight: 500; }
+    .step.complete .step-text { color: #388E3C; }
+    .step.error .step-text { color: #c62828; }
+    .result {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      display: none;
+    }
+    .result.show { display: block; }
+    .result h3 {
+      color: #333;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+    .result-data {
+      background: white;
+      padding: 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      word-break: break-all;
+    }
+    .error-message {
+      color: #c62828;
+      margin-top: 20px;
+      padding: 16px;
+      background: #ffebee;
+      border-radius: 8px;
+      display: none;
+    }
+    .error-message.show { display: block; }
+    .warning {
+      margin-top: 24px;
+      padding: 20px;
+      background: #fff3cd;
+      border: 2px solid #ffc107;
+      border-radius: 8px;
+      display: none;
+      animation: slideIn 0.3s ease-out;
+    }
+    .warning.show { display: block; }
+    .warning-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .warning-icon {
+      font-size: 24px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .warning-title {
+      font-weight: 600;
+      color: #856404;
+      font-size: 18px;
+    }
+    .warning-text {
+      color: #856404;
+      line-height: 1.5;
+      margin-left: 36px;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 Email Proof Generator</h1>
+    <div id="step1" class="step active">
+      <div class="step-icon">1</div>
+      <div class="step-text">Authenticating with Gmail...</div>
+    </div>
+    <div id="step2" class="step">
+      <div class="step-icon">2</div>
+      <div class="step-text">Fetching email from Gmail...</div>
+    </div>
+    <div id="step3" class="step">
+      <div class="step-icon">3</div>
+      <div class="step-text">Generating ZK proof (this may take a few minutes)...</div>
+    </div>
+    <div id="step4" class="step">
+      <div class="step-icon">4</div>
+      <div class="step-text">Proof generated successfully!</div>
+    </div>
+    <div id="warning" class="warning">
+      <div class="warning-header">
+        <span class="warning-icon">⚠️</span>
+        <span class="warning-title">Important: Please Wait</span>
+      </div>
+      <p class="warning-text">
+        <strong>DO NOT close this page or navigate away!</strong><br>
+        Proof generation is in progress and may take several minutes. 
+        Closing this page will cancel the operation and you'll need to start over.
+      </p>
+    </div>
+    <div id="error" class="error-message"></div>
+    <div id="result" class="result">
+      <h3>✨ Proof Generated</h3>
+      <p style="margin-bottom: 12px; color: #666; font-weight: 600;">
+        Proof ID: <span id="proofId" style="font-family: monospace; color: #2196F3;"></span>
+      </p>
+      <p style="margin-bottom: 8px; color: #666;">Email ID: <span id="emailId"></span></p>
+      <p style="margin-bottom: 8px; color: #666;">Proof fields: <span id="proofCount"></span></p>
+      <p style="margin-bottom: 8px; color: #666;">Public inputs: <span id="publicInputsCount"></span></p>
+      <p id="redirectMessage" style="margin-top: 20px; padding: 12px; background: #e3f2fd; border-radius: 4px; color: #1976D2; font-weight: 500; text-align: center; display: none;">
+        🔄 Redirecting to claim page...
+      </p>
+    </div>
+  </div>
+  <script>
+    function setStepComplete(stepId) {
+      const step = document.getElementById(stepId);
+      step.classList.remove('active');
+      step.classList.add('complete');
+    }
+    function setStepActive(stepId) {
+      document.getElementById(stepId).classList.add('active');
+      if (stepId === 'step3') {
+        showWarning();
+      }
+    }
+    function setStepError(stepId) {
+      const step = document.getElementById(stepId);
+      step.classList.remove('active');
+      step.classList.add('error');
+    }
+    function showError(message) {
+      hideWarning();
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = message;
+      errorDiv.classList.add('show');
+    }
+    function showWarning() {
+      document.getElementById('warning').classList.add('show');
+      // Prevent accidental page close during proof generation
+      window.onbeforeunload = function() {
+        return "Proof generation is in progress. Are you sure you want to leave?";
+      };
+    }
+    function hideWarning() {
+      document.getElementById('warning').classList.remove('show');
+      // Allow page close after completion
+      window.onbeforeunload = null;
+    }
+    function showResult(proofId, emailId, proofCount, publicInputsCount) {
+      hideWarning();
+      document.getElementById('proofId').textContent = proofId;
+      document.getElementById('emailId').textContent = emailId;
+      document.getElementById('proofCount').textContent = proofCount + ' fields';
+      document.getElementById('publicInputsCount').textContent = publicInputsCount + ' fields';
+      document.getElementById('result').classList.add('show');
+      
+      // Show redirect message and redirect to claim page after 2 seconds
+      setTimeout(function() {
+        document.getElementById('redirectMessage').style.display = 'block';
+      }, 1000);
+      
+      setTimeout(function() {
+        window.location.href = 'https://pay.zk.email/claim?proofId=' + proofId;
+      }, 2500);
+    }
+  </script>
+</body>
+</html>
+

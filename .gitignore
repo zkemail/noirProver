@@ -24,7 +24,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # caches
 .eslintcache
-.cache
 *.tsbuildinfo
 
 # IntelliJ based IDEs
@@ -34,3 +33,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .DS_Store
 
 .cursor
+
+# Kubernetes secrets (keep .template.yaml files)
+k8s/*secrets.yaml
+!k8s/*.template.yaml

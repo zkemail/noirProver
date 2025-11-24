@@ -1,0 +1,34 @@
+services:
+  noir-prover:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: noir-prover:latest
+    container_name: noir-prover
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NODE_OPTIONS=--max-old-space-size=16384
+    # Resource limits - adjust based on your needs
+    deploy:
+      resources:
+        limits:
+          memory: 64G
+          cpus: "16"
+        reservations:
+          memory: 32G
+          cpus: "4"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3000/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
