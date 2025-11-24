@@ -123,6 +123,7 @@ function saveProofResult(
     email: { id: string; raw: string };
     proof: string[];
     publicInputs: string[];
+    handle?: string;
   }
 ) {
   ensureProofsDir();
@@ -431,12 +432,14 @@ app.get("/gmail/auth", (req: Request, res: Response) => {
   const query = req.query.query as string | undefined;
   const blueprint = req.query.blueprint as string | undefined;
   const command = req.query.command as string | undefined;
+  const handle = req.query.handle as string | undefined;
 
   // Generate OAuth URL with state parameter to preserve custom parameters
   const state = JSON.stringify({
     query,
     blueprint,
     command,
+    handle,
   });
 
   const authUrl = oauth2Client.generateAuthUrl({
@@ -475,6 +478,7 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
     let query: string | undefined;
     let blueprintSlug: string | undefined;
     let command: string | undefined;
+    let handle: string | undefined;
 
     if (stateParam) {
       try {
@@ -482,6 +486,7 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
         query = state.query;
         blueprintSlug = state.blueprint;
         command = state.command;
+        handle = state.handle;
       } catch (e) {
         console.warn("Failed to parse state parameter:", e);
       }
@@ -552,6 +557,7 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
       },
       proof: proofResult.proof,
       publicInputs: proofResult.publicInputs,
+      ...(handle && { handle }),
     };
     saveProofResult(proofId, result);
 
@@ -582,7 +588,7 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
 // Endpoint to fetch email with an existing access token
 app.post("/gmail/fetch-email", async (req: Request, res: Response) => {
   try {
-    const { accessToken, query, blueprintSlug, command } = req.body;
+    const { accessToken, query, blueprintSlug, command, handle } = req.body;
 
     // Generate unique proof ID
     const proofId = randomUUID();
@@ -641,6 +647,7 @@ app.post("/gmail/fetch-email", async (req: Request, res: Response) => {
       },
       proof: proofResult.proof,
       publicInputs: proofResult.publicInputs,
+      ...(handle && { handle }),
     };
     saveProofResult(proofId, result);
 
@@ -653,6 +660,7 @@ app.post("/gmail/fetch-email", async (req: Request, res: Response) => {
       },
       proof: proofResult.proof,
       publicInputs: proofResult.publicInputs,
+      ...(handle && { handle }),
     });
   } catch (error) {
     console.error("Error fetching email:", error);

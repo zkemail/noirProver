@@ -88,13 +88,14 @@ Initiates the Gmail OAuth flow. Redirects the user to Google's OAuth consent scr
 - `query` (required) - Gmail search query
 - `blueprint` (required) - Blueprint slug for proof generation
 - `command` (required) - External input command for proof
+- `handle` (optional) - User handle/identifier to associate with the proof
 
 **Usage Examples:**
 
 Discord password reset:
 
 ```
-http://localhost:3000/gmail/auth?query=from:discord.com subject:"Password Reset Request for Discord"&blueprint=zkemail/discord@v1&command=reset
+http://localhost:3000/gmail/auth?query=from:discord.com subject:"Password Reset Request for Discord"&blueprint=zkemail/discord@v1&command=reset&handle=user123
 ```
 
 **Flow:**
@@ -149,7 +150,8 @@ Fetches an email using a provided access token with a custom search query and ge
   "accessToken": "ya29.a0AfH6...",
   "query": "from:github.com subject:verification",
   "blueprintSlug": "zkemail/github@v1",
-  "command": "verify"
+  "command": "verify",
+  "handle": "user123"
 }
 ```
 
@@ -159,6 +161,7 @@ Fetches an email using a provided access token with a custom search query and ge
 - `query` (required) - Gmail search query
 - `blueprintSlug` (required) - Blueprint slug for proof generation
 - `command` (required) - External input command for proof
+- `handle` (optional) - User handle/identifier to associate with the proof
 
 **Response:**
 
@@ -171,9 +174,12 @@ Fetches an email using a provided access token with a custom search query and ge
     "raw": "raw email content..."
   },
   "proof": ["0x...", "0x...", ...],
-  "publicInputs": ["0x...", "0x...", ...]
+  "publicInputs": ["0x...", "0x...", ...],
+  "handle": "user123"
 }
 ```
+
+**Note:** The `handle` field is only included if it was provided in the request.
 
 **Error Response:**
 
@@ -210,9 +216,12 @@ GET http://localhost:3000/proof/550e8400-e29b-41d4-a716-446655440000
     "raw": "raw email content..."
   },
   "proof": ["0x...", "0x...", ...],
-  "publicInputs": ["0x...", "0x...", ...]
+  "publicInputs": ["0x...", "0x...", ...],
+  "handle": "user123"
 }
 ```
+
+**Note:** The `handle` field is only included if it was provided during proof generation.
 
 **Error Response:**
 
