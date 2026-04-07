@@ -44,6 +44,32 @@ const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
 const GMAIL_REDIRECT_URI =
   process.env.GMAIL_REDIRECT_URI || "http://localhost:3000/gmail/callback";
 
+// Allowlist of trusted origins that may receive the proof redirect.
+// Comma-separated, e.g. "https://pay.zk.email,https://ens.zk.email"
+const ALLOWED_REDIRECT_ORIGINS = (
+  process.env.ALLOWED_REDIRECT_ORIGINS || "https://pay.zk.email,https://ens.zk.email"
+)
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const DEFAULT_REDIRECT_BASE = "https://pay.zk.email/claim";
+
+function resolveRedirectUrl(redirectUri: string | undefined): string {
+  if (!redirectUri) return DEFAULT_REDIRECT_BASE;
+  try {
+    const url = new URL(redirectUri);
+    const origin = url.origin; // e.g. "https://ens.zk.email"
+    if (ALLOWED_REDIRECT_ORIGINS.includes(origin)) {
+      return redirectUri;
+    }
+    console.warn(`Redirect URI origin not in allowlist: ${origin}`);
+  } catch {
+    console.warn(`Invalid redirect URI: ${redirectUri}`);
+  }
+  return DEFAULT_REDIRECT_BASE;
+}
+
 // Validate Gmail OAuth credentials are set
 if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET) {
   console.warn(
@@ -433,6 +459,7 @@ app.get("/gmail/auth", (req: Request, res: Response) => {
   const blueprint = req.query.blueprint as string | undefined;
   const command = req.query.command as string | undefined;
   const handle = req.query.handle as string | undefined;
+  const redirect_uri = req.query.redirect_uri as string | undefined;
 
   // Generate OAuth URL with state parameter to preserve custom parameters
   const state = JSON.stringify({
@@ -440,6 +467,7 @@ app.get("/gmail/auth", (req: Request, res: Response) => {
     blueprint,
     command,
     handle,
+    redirect_uri,
   });
 
   const authUrl = oauth2Client.generateAuthUrl({
@@ -479,6 +507,7 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
     let blueprintSlug: string | undefined;
     let command: string | undefined;
     let handle: string | undefined;
+    let redirectUri: string | undefined;
 
     if (stateParam) {
       try {
@@ -487,6 +516,7 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
         blueprintSlug = state.blueprint;
         command = state.command;
         handle = state.handle;
+        redirectUri = state.redirect_uri;
       } catch (e) {
         console.warn("Failed to parse state parameter:", e);
       }
@@ -561,12 +591,14 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
     };
     saveProofResult(proofId, result);
 
+    const finalRedirectUrl = resolveRedirectUrl(redirectUri);
+
     // Steps 3 and 4 complete
     res.write(`
   <script>
     setStepComplete('step3');
     setStepComplete('step4');
-    showResult('${proofId}', '${email.id}', ${proofResult.proof.length}, ${proofResult.publicInputs.length});
+    showResult('${proofId}', '${email.id}', ${proofResult.proof.length}, ${proofResult.publicInputs.length}, '${finalRedirectUrl}');
   </script>`);
     res.end();
   } catch (error) {

@@ -235,21 +235,23 @@
       // Allow page close after completion
       window.onbeforeunload = null;
     }
-    function showResult(proofId, emailId, proofCount, publicInputsCount) {
+    function showResult(proofId, emailId, proofCount, publicInputsCount, redirectUrl) {
       hideWarning();
       document.getElementById('proofId').textContent = proofId;
       document.getElementById('emailId').textContent = emailId;
       document.getElementById('proofCount').textContent = proofCount + ' fields';
       document.getElementById('publicInputsCount').textContent = publicInputsCount + ' fields';
       document.getElementById('result').classList.add('show');
-      
+
+      var destination = redirectUrl + '?proofId=' + proofId;
+
       // Show redirect message and redirect to claim page after 2 seconds
       setTimeout(function() {
         document.getElementById('redirectMessage').style.display = 'block';
       }, 1000);
-      
+
       setTimeout(function() {
-        window.location.href = 'https://pay.zk.email/claim?proofId=' + proofId;
+        window.location.href = destination;
       }, 2500);
     }
   </script>
