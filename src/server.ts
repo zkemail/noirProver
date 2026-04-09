@@ -217,6 +217,10 @@ async function prepareCircuit(blueprint: any): Promise<string> {
     throw new Error("Blueprint ID is required");
   }
 
+  if (!/^[a-zA-Z0-9_\-]+$/.test(blueprintId)) {
+    throw new Error(`Invalid blueprint ID format: ${blueprintId}`);
+  }
+
   ensureCircuitsDir();
 
   const circuitDir = path.join(CIRCUITS_DIR, blueprintId);
