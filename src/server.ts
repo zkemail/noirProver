@@ -251,9 +251,11 @@ async function prepareCircuit(blueprint: any): Promise<string> {
   // Check if circuit already exists and is compiled
   const compiledMarker = path.join(circuitDir, ".compiled");
   if (fs.existsSync(circuitDir) && fs.existsSync(compiledMarker)) {
-    console.log(`Circuit already compiled for blueprint: ${blueprintId}`);
+    console.log(`[cache hit] Circuit already compiled for blueprint: ${blueprintId}`);
     return circuitDir;
   }
+
+  console.warn(`[cache miss] No pre-compiled circuit found for blueprint: ${blueprintId} (${blueprint.props.slug ?? "unknown slug"}) at ${new Date().toISOString()} - compiling now and caching for future use.`);
 
   // Download and extract if not exists
   if (!fs.existsSync(circuitDir)) {
@@ -285,7 +287,7 @@ async function prepareCircuit(blueprint: any): Promise<string> {
 
   // Create marker file to indicate successful compilation
   fs.writeFileSync(compiledMarker, new Date().toISOString(), "utf-8");
-  console.log("Circuit compiled and marked successfully");
+  console.log(`[cache] Circuit compiled and cached for blueprint: ${blueprintId} (${blueprint.props.slug ?? "unknown slug"}) at ${new Date().toISOString()}`);
 
   return circuitDir;
 }
