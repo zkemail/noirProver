@@ -199,7 +199,7 @@ export class InputsGenerator {
     for (const [key, value] of circuitInputsMap) {
       if (value && typeof value === "object" && value instanceof Map) {
         circuitInputsObject[key] = Object.fromEntries(value);
-      } else if (value) {
+      } else if (value !== undefined) {
         circuitInputsObject[key] = value;
       }
     }
