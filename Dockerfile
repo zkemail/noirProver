@@ -49,15 +49,12 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm install
-
 # Copy source code
 COPY src ./src
 
 # Install production dependencies + tsx for running TypeScript
-RUN npm install --omit=dev && \
-    npm install tsx && \
+RUN npm ci --omit=dev && \
+    npm install --no-save tsx && \
     npm cache clean --force
 
 COPY .cache/ .cache/
