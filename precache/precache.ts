@@ -23,30 +23,63 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CIRCUITS_DIR = path.join(process.cwd(), ".cache", "circuits");
 const BLUEPRINTS_FILE = path.join(__dirname, "blueprints.json");
 
-async function downloadFile(url: string, destPath: string, maxRedirects: number = 5): Promise<void> {
+async function downloadFile(
+  url: string,
+  destPath: string,
+  maxRedirects: number = 5,
+): Promise<void> {
   if (maxRedirects <= 0) throw new Error("Too many redirects");
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(destPath);
-    const cleanup = () => { file.close(); fs.unlink(destPath, () => {}); };
-    https.get(url, (response) => {
-      if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 303 || response.statusCode === 307 || response.statusCode === 308) {
-        file.close();
-        if (response.headers.location) {
-          downloadFile(response.headers.location, destPath, maxRedirects - 1).then(resolve).catch(reject);
-        } else {
-          reject(new Error(`Redirect with no location header (HTTP ${response.statusCode})`));
+    const cleanup = () => {
+      file.close();
+      fs.unlink(destPath, () => {});
+    };
+    https
+      .get(url, (response) => {
+        if (
+          response.statusCode === 301 ||
+          response.statusCode === 302 ||
+          response.statusCode === 303 ||
+          response.statusCode === 307 ||
+          response.statusCode === 308
+        ) {
+          file.close();
+          if (response.headers.location) {
+            downloadFile(response.headers.location, destPath, maxRedirects - 1)
+              .then(resolve)
+              .catch(reject);
+          } else {
+            reject(
+              new Error(
+                `Redirect with no location header (HTTP ${response.statusCode})`,
+              ),
+            );
+          }
+          return;
         }
-        return;
-      }
-      if (!response.statusCode || response.statusCode < 200 || response.statusCode >= 300) {
-        response.resume();
+        if (
+          !response.statusCode ||
+          response.statusCode < 200 ||
+          response.statusCode >= 300
+        ) {
+          response.resume();
+          cleanup();
+          reject(
+            new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`),
+          );
+          return;
+        }
+        response.pipe(file);
+        file.on("finish", () => {
+          file.close();
+          resolve();
+        });
+      })
+      .on("error", (err) => {
         cleanup();
-        reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
-        return;
-      }
-      response.pipe(file);
-      file.on("finish", () => { file.close(); resolve(); });
-    }).on("error", (err) => { cleanup(); reject(err); });
+        reject(err);
+      });
   });
 }
 
@@ -59,7 +92,8 @@ async function prepareCircuit(slug: string, refresh: boolean): Promise<void> {
   const blueprintId = blueprint.props.id;
 
   if (!blueprintId) throw new Error(`No ID found for blueprint: ${slug}`);
-  if (!/^[a-zA-Z0-9_\-]+$/.test(blueprintId)) throw new Error(`Invalid blueprint ID format: ${blueprintId}`);
+  if (!/^[a-zA-Z0-9_\-]+$/.test(blueprintId))
+    throw new Error(`Invalid blueprint ID format: ${blueprintId}`);
 
   const circuitDir = path.join(CIRCUITS_DIR, blueprintId);
   const zipPath = path.join(CIRCUITS_DIR, `${blueprintId}.zip`);
@@ -104,7 +138,9 @@ async function prepareCircuit(slug: string, refresh: boolean): Promise<void> {
 async function main() {
   const refresh = process.argv.includes("--refresh");
   const slugs: string[] = JSON.parse(fs.readFileSync(BLUEPRINTS_FILE, "utf-8"));
-  console.log(`Pre-caching ${slugs.length} blueprint(s)...${refresh ? " (refresh mode)" : ""}`);
+  console.log(
+    `Pre-caching ${slugs.length} blueprint(s)...${refresh ? " (refresh mode)" : ""}`,
+  );
 
   for (const slug of slugs) {
     try {
