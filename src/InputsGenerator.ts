@@ -41,7 +41,7 @@ export class InputsGenerator {
 
   public async generateInputs(
     eml: string,
-    externalInputs: ExternalInputInput[]
+    externalInputs: ExternalInputInput[],
   ) {
     // Wait for WASM initialization
     await relayerUtilsInit;
@@ -88,7 +88,7 @@ export class InputsGenerator {
         saveCacheToDisk(cacheKey, cacheData);
 
         console.log(
-          `Cached circuit and regex graphs for blueprint: ${cacheKey}`
+          `Cached circuit and regex graphs for blueprint: ${cacheKey}`,
         );
       }
     }
@@ -96,7 +96,7 @@ export class InputsGenerator {
       const regexGraph = regexGraphs[`${dr.name}_regex.json`];
       if (!regexGraph) {
         throw new Error(
-          `No regexGraph was compiled for decomposedRegexe ${dr.name}`
+          `No regexGraph was compiled for decomposedRegexe ${dr.name}`,
         );
       }
 
@@ -108,7 +108,7 @@ export class InputsGenerator {
         haystack = parsedEmail.canonicalizedHeader;
       } else if (this.blueprint.props.shaPrecomputeSelector) {
         haystack = parsedEmail.cleanedBody.split(
-          this.blueprint.props.shaPrecomputeSelector
+          this.blueprint.props.shaPrecomputeSelector,
         )[1];
       } else {
         haystack = parsedEmail.cleanedBody;
@@ -167,7 +167,7 @@ export class InputsGenerator {
 
     const externalInputsWithMaxLength = addMaxLengthToExternalInputs(
       externalInputs,
-      this.blueprint.props.externalInputs
+      this.blueprint.props.externalInputs,
     );
 
     console.log("externalInputsWithMaxLength: ", externalInputsWithMaxLength);
@@ -177,7 +177,7 @@ export class InputsGenerator {
         eml,
         regexInputs,
         externalInputsWithMaxLength,
-        noirParams
+        noirParams,
       );
 
     console.log("Circuit inputs generated successfully (Map)");
@@ -194,7 +194,7 @@ export class InputsGenerator {
     console.log("Circuit inputs converted to object");
     console.log(
       "Number of input fields:",
-      Object.keys(circuitInputsObject).length
+      Object.keys(circuitInputsObject).length,
     );
 
     console.log("Circuit inputs: ", circuitInputsObject);
@@ -250,7 +250,7 @@ function loadCacheFromDisk(blueprintSlug: string): BlueprintCache | null {
   } catch (error) {
     console.error(
       `Failed to load cache from disk for ${blueprintSlug}:`,
-      error
+      error,
     );
   }
   return null;
@@ -309,7 +309,7 @@ export function clearBlueprintCache(blueprintSlug?: string) {
 
 export function addMaxLengthToExternalInputs(
   externalInputs: ExternalInputInput[],
-  externalInputDefinitions?: ExternalInput[]
+  externalInputDefinitions?: ExternalInput[],
 ) {
   const externalInputsWithMaxLength: (ExternalInputInput & {
     maxLength: number;
@@ -317,11 +317,11 @@ export function addMaxLengthToExternalInputs(
   if (externalInputDefinitions) {
     for (const externalInputDefinition of externalInputDefinitions) {
       const externalInput = externalInputs.find(
-        (ei) => ei.name === externalInputDefinition.name
+        (ei) => ei.name === externalInputDefinition.name,
       );
       if (!externalInput) {
         throw new Error(
-          `You must provide the external input for ${externalInputDefinition.name}`
+          `You must provide the external input for ${externalInputDefinition.name}`,
         );
       }
       externalInputsWithMaxLength.push({

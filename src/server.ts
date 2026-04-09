@@ -47,7 +47,8 @@ const GMAIL_REDIRECT_URI =
 // Allowlist of trusted origins for CORS and proof redirects.
 // Comma-separated, e.g. "https://pay.zk.email,https://ens.zk.email"
 const CORS_ALLOWED_ORIGINS = (
-  process.env.CORS_ALLOWED_ORIGINS || "https://pay.zk.email,https://ens.zk.email"
+  process.env.CORS_ALLOWED_ORIGINS ||
+  "https://pay.zk.email,https://ens.zk.email"
 )
   .split(",")
   .map((o) => o.trim())
@@ -73,10 +74,10 @@ function resolveRedirectUrl(redirectUri: string | undefined): string {
 // Validate Gmail OAuth credentials are set
 if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET) {
   console.warn(
-    "⚠️  Warning: GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET not set in .env"
+    "⚠️  Warning: GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET not set in .env",
   );
   console.warn(
-    "   Gmail OAuth endpoints will not work until these are configured"
+    "   Gmail OAuth endpoints will not work until these are configured",
   );
   console.warn("   See README.md for setup instructions");
 }
@@ -85,7 +86,7 @@ if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET) {
 const oauth2Client = new google.auth.OAuth2(
   GMAIL_CLIENT_ID,
   GMAIL_CLIENT_SECRET,
-  GMAIL_REDIRECT_URI
+  GMAIL_REDIRECT_URI,
 );
 
 // Scopes required for Gmail API
@@ -94,7 +95,7 @@ const GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 // Load HTML template for callback UI
 const callbackTemplate = fs.readFileSync(
   path.join(process.cwd(), "src", "callbackTemplate.html"),
-  "utf-8"
+  "utf-8",
 );
 
 // Middleware to parse JSON request bodies with increased limits
@@ -107,9 +108,12 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader(
       "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS"
+      "GET, POST, PUT, DELETE, OPTIONS",
     );
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization",
+    );
     res.setHeader("Access-Control-Max-Age", "86400"); // 24 hours
   }
 
@@ -153,7 +157,7 @@ function saveProofResult(
     proof: string[];
     publicInputs: string[];
     handle?: string;
-  }
+  },
 ) {
   ensureProofsDir();
   const filePath = path.join(PROOFS_DIR, `${proofId}.json`);
@@ -169,9 +173,9 @@ function saveProofResult(
         ...(result.handle && { handle: result.handle }),
       },
       null,
-      2
+      2,
     ),
-    "utf-8"
+    "utf-8",
   );
   console.log(`Saved proof result to: ${filePath}`);
 }
@@ -186,7 +190,11 @@ function loadProofResult(proofId: string) {
 }
 
 // Download file from URL
-async function downloadFile(url: string, destPath: string, maxRedirects: number = 5): Promise<void> {
+async function downloadFile(
+  url: string,
+  destPath: string,
+  maxRedirects: number = 5,
+): Promise<void> {
   if (maxRedirects <= 0) {
     throw new Error("Too many redirects");
   }
@@ -198,22 +206,38 @@ async function downloadFile(url: string, destPath: string, maxRedirects: number 
     };
     https
       .get(url, (response) => {
-        if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 303 || response.statusCode === 307 || response.statusCode === 308) {
+        if (
+          response.statusCode === 301 ||
+          response.statusCode === 302 ||
+          response.statusCode === 303 ||
+          response.statusCode === 307 ||
+          response.statusCode === 308
+        ) {
           file.close();
           if (response.headers.location) {
             downloadFile(response.headers.location, destPath, maxRedirects - 1)
               .then(resolve)
               .catch(reject);
           } else {
-            reject(new Error(`Redirect with no location header (HTTP ${response.statusCode})`));
+            reject(
+              new Error(
+                `Redirect with no location header (HTTP ${response.statusCode})`,
+              ),
+            );
           }
           return;
         }
 
-        if (!response.statusCode || response.statusCode < 200 || response.statusCode >= 300) {
+        if (
+          !response.statusCode ||
+          response.statusCode < 200 ||
+          response.statusCode >= 300
+        ) {
           response.resume();
           cleanup();
-          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+          reject(
+            new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`),
+          );
           return;
         }
 
@@ -251,11 +275,15 @@ async function prepareCircuit(blueprint: any): Promise<string> {
   // Check if circuit already exists and is compiled
   const compiledMarker = path.join(circuitDir, ".compiled");
   if (fs.existsSync(circuitDir) && fs.existsSync(compiledMarker)) {
-    console.log(`[cache hit] Circuit already compiled for blueprint: ${blueprintId}`);
+    console.log(
+      `[cache hit] Circuit already compiled for blueprint: ${blueprintId}`,
+    );
     return circuitDir;
   }
 
-  console.warn(`[cache miss] No pre-compiled circuit found for blueprint: ${blueprintId} (${blueprint.props.slug ?? "unknown slug"}) at ${new Date().toISOString()} - compiling now and caching for future use.`);
+  console.warn(
+    `[cache miss] No pre-compiled circuit found for blueprint: ${blueprintId} (${blueprint.props.slug ?? "unknown slug"}) at ${new Date().toISOString()} - compiling now and caching for future use.`,
+  );
 
   // Download and extract if not exists
   if (!fs.existsSync(circuitDir)) {
@@ -287,7 +315,9 @@ async function prepareCircuit(blueprint: any): Promise<string> {
 
   // Create marker file to indicate successful compilation
   fs.writeFileSync(compiledMarker, new Date().toISOString(), "utf-8");
-  console.log(`[cache] Circuit compiled and cached for blueprint: ${blueprintId} (${blueprint.props.slug ?? "unknown slug"}) at ${new Date().toISOString()}`);
+  console.log(
+    `[cache] Circuit compiled and cached for blueprint: ${blueprintId} (${blueprint.props.slug ?? "unknown slug"}) at ${new Date().toISOString()}`,
+  );
 
   return circuitDir;
 }
@@ -295,7 +325,7 @@ async function prepareCircuit(blueprint: any): Promise<string> {
 export const getProof = async (
   rawEmail: string,
   blueprintSlug: string,
-  command: string
+  command: string,
 ) => {
   const startTime = Date.now();
   const { default: initZkEmail } = await import("@zk-email/sdk");
@@ -332,7 +362,7 @@ export const getProof = async (
 
     const circuitInputs = await inputsGenerator.generateInputs(
       rawEmail,
-      externalInputs
+      externalInputs,
     );
 
     // Convert circuit inputs to TOML and save as Prover.toml
@@ -346,24 +376,24 @@ export const getProof = async (
     console.log("Running prove to generate proof...");
     await execAsync(`cd "${workingDir}" && nargo execute circuit > /dev/null`);
     await execAsync(
-      `cd "${workingDir}" && bb prove --scheme ultra_honk --bytecode_path ./target/circuit.json --witness_path ./target/circuit.gz --output_path ./target --oracle_hash keccak --output_format bytes_and_fields> /dev/null`
+      `cd "${workingDir}" && bb prove --scheme ultra_honk --bytecode_path ./target/circuit.json --witness_path ./target/circuit.gz --output_path ./target --oracle_hash keccak --output_format bytes_and_fields> /dev/null`,
     );
 
     // Load the generated proof and public inputs fields
     const proofFieldsPath = path.join(
       workingDir,
       "target",
-      "proof_fields.json"
+      "proof_fields.json",
     );
     const publicInputsFieldsPath = path.join(
       workingDir,
       "target",
-      "public_inputs_fields.json"
+      "public_inputs_fields.json",
     );
 
     const proofFields = JSON.parse(fs.readFileSync(proofFieldsPath, "utf-8"));
     const publicInputsFields = JSON.parse(
-      fs.readFileSync(publicInputsFieldsPath, "utf-8")
+      fs.readFileSync(publicInputsFieldsPath, "utf-8"),
     );
 
     console.log("Proof fields:", proofFields);
@@ -377,7 +407,7 @@ export const getProof = async (
     console.error("Error in getProof:", error);
     console.error(
       "Error stack:",
-      error instanceof Error ? error.stack : "No stack trace available"
+      error instanceof Error ? error.stack : "No stack trace available",
     );
     throw error; // Re-throw to be handled by the endpoint
   } finally {
@@ -388,7 +418,7 @@ export const getProof = async (
     } catch (cleanupError) {
       console.error(
         `Error cleaning up working directory ${workingDir}:`,
-        cleanupError
+        cleanupError,
       );
     }
   }
@@ -423,14 +453,14 @@ export const proveEndpoint = async (req: Request, res: Response) => {
 async function fetchEmailFromGmail(
   accessToken: string,
   query: string,
-  maxResults: number = 1
+  maxResults: number = 1,
 ) {
   try {
     // Set credentials for this request
     const auth = new google.auth.OAuth2(
       GMAIL_CLIENT_ID,
       GMAIL_CLIENT_SECRET,
-      GMAIL_REDIRECT_URI
+      GMAIL_REDIRECT_URI,
     );
     auth.setCredentials({ access_token: accessToken });
 
@@ -465,7 +495,7 @@ async function fetchEmailFromGmail(
     if (message.data.raw) {
       // Decode base64url encoded email
       const rawEmail = Buffer.from(message.data.raw, "base64url").toString(
-        "utf-8"
+        "utf-8",
       );
       return {
         id: messageId,
