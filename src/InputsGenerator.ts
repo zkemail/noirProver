@@ -157,7 +157,7 @@ export class InputsGenerator {
       };
     });
 
-    console.log("Regex inputs: ", regexInputs);
+    console.log("Regex inputs count:", regexInputs.length);
 
     const noirParams = {
       maxHeaderLength: this.blueprint.props.emailHeaderMaxLength || 512,
@@ -170,14 +170,20 @@ export class InputsGenerator {
 
     console.log(noirParams);
 
-    console.log("External inputs: ", externalInputs);
+    console.log("External input count:", externalInputs.length);
 
     const externalInputsWithMaxLength = addMaxLengthToExternalInputs(
       externalInputs,
       this.blueprint.props.externalInputs,
     );
 
-    console.log("externalInputsWithMaxLength: ", externalInputsWithMaxLength);
+    console.log(
+      "Prepared external inputs:",
+      externalInputsWithMaxLength.map(({ name, maxLength }) => ({
+        name,
+        maxLength,
+      })),
+    );
 
     const circuitInputsMap =
       await generateNoirCircuitInputsWithRegexesAndExternalInputs(
@@ -198,13 +204,10 @@ export class InputsGenerator {
       }
     }
 
-    console.log("Circuit inputs converted to object");
     console.log(
-      "Number of input fields:",
+      "Circuit inputs generated successfully, field count:",
       Object.keys(circuitInputsObject).length,
     );
-
-    console.log("Circuit inputs: ", circuitInputsObject);
     return circuitInputsObject;
   }
 }
