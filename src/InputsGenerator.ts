@@ -8,8 +8,10 @@ import * as fs from "fs";
 import * as path from "path";
 
 let relayerUtilsResolver: (value: any) => void;
-const relayerUtilsInit: Promise<void> = new Promise((resolve) => {
+let relayerUtilsRejecter: (reason: any) => void;
+const relayerUtilsInit: Promise<void> = new Promise((resolve, reject) => {
   relayerUtilsResolver = resolve;
+  relayerUtilsRejecter = reject;
 });
 
 init()
@@ -18,6 +20,7 @@ init()
   })
   .catch((err) => {
     console.error("Failed to initialize wasm for relayer-utils: ", err);
+    relayerUtilsRejecter(err);
   });
 
 export interface ExternalInput {
