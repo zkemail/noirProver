@@ -37,3 +37,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Kubernetes secrets (keep .template.yaml files)
 k8s/*secrets.yaml
 !k8s/*.template.yaml
+
+# Runtime cache — only compiled circuits should be committed
+.cache/blueprints/
+.cache/proofs/
+.cache/circuits/working-*/
