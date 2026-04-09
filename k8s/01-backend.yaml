@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: noir-prover
-          image: zkemail/noir-prover:v0.1
+          image: zkemail/noir-prover:v0.2
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
