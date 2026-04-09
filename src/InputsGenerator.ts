@@ -107,9 +107,16 @@ export class InputsGenerator {
       if (dr.location === "header") {
         haystack = parsedEmail.canonicalizedHeader;
       } else if (this.blueprint.props.shaPrecomputeSelector) {
-        haystack = parsedEmail.cleanedBody.split(
+        const [, selectedBody] = parsedEmail.cleanedBody.split(
           this.blueprint.props.shaPrecomputeSelector,
-        )[1];
+          2,
+        );
+        if (selectedBody === undefined) {
+          throw new Error(
+            `shaPrecomputeSelector "${this.blueprint.props.shaPrecomputeSelector}" was not found in the email body`,
+          );
+        }
+        haystack = selectedBody;
       } else {
         haystack = parsedEmail.cleanedBody;
       }
