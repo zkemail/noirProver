@@ -183,19 +183,35 @@ function loadProofResult(proofId: string) {
 }
 
 // Download file from URL
-async function downloadFile(url: string, destPath: string): Promise<void> {
+async function downloadFile(url: string, destPath: string, maxRedirects: number = 5): Promise<void> {
+  if (maxRedirects <= 0) {
+    throw new Error("Too many redirects");
+  }
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(destPath);
+    const cleanup = () => {
+      file.close();
+      fs.unlink(destPath, () => {});
+    };
     https
       .get(url, (response) => {
-        if (response.statusCode === 302 || response.statusCode === 301) {
-          // Handle redirects
+        if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 303 || response.statusCode === 307 || response.statusCode === 308) {
+          file.close();
           if (response.headers.location) {
-            downloadFile(response.headers.location, destPath)
+            downloadFile(response.headers.location, destPath, maxRedirects - 1)
               .then(resolve)
               .catch(reject);
-            return;
+          } else {
+            reject(new Error(`Redirect with no location header (HTTP ${response.statusCode})`));
           }
+          return;
+        }
+
+        if (!response.statusCode || response.statusCode < 200 || response.statusCode >= 300) {
+          response.resume();
+          cleanup();
+          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+          return;
         }
 
         response.pipe(file);
@@ -205,7 +221,7 @@ async function downloadFile(url: string, destPath: string): Promise<void> {
         });
       })
       .on("error", (err) => {
-        fs.unlinkSync(destPath);
+        cleanup();
         reject(err);
       });
   });
