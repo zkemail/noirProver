@@ -142,11 +142,11 @@ function ensureProofsDir() {
   }
 }
 
-// Save proof result to file
+// Save proof result to file (email.raw is intentionally not persisted for privacy)
 function saveProofResult(
   proofId: string,
   result: {
-    email: { id: string; raw: string };
+    email: { id: string };
     proof: string[];
     publicInputs: string[];
     handle?: string;
@@ -160,7 +160,10 @@ function saveProofResult(
       {
         id: proofId,
         timestamp: new Date().toISOString(),
-        ...result,
+        email: { id: result.email.id },
+        proof: result.proof,
+        publicInputs: result.publicInputs,
+        ...(result.handle && { handle: result.handle }),
       },
       null,
       2
