@@ -235,15 +235,15 @@
       // Allow page close after completion
       window.onbeforeunload = null;
     }
-    function showResult(proofId, emailId, proofCount, publicInputsCount, redirectUrl) {
+    function showResult(data) {
       hideWarning();
-      document.getElementById('proofId').textContent = proofId;
-      document.getElementById('emailId').textContent = emailId;
-      document.getElementById('proofCount').textContent = proofCount + ' fields';
-      document.getElementById('publicInputsCount').textContent = publicInputsCount + ' fields';
+      document.getElementById('proofId').textContent = data.proofId;
+      document.getElementById('emailId').textContent = data.emailId;
+      document.getElementById('proofCount').textContent = data.proofCount + ' fields';
+      document.getElementById('publicInputsCount').textContent = data.publicInputsCount + ' fields';
       document.getElementById('result').classList.add('show');
 
-      var destination = redirectUrl + '?proofId=' + proofId;
+      var destination = data.redirectUrl + '?proofId=' + encodeURIComponent(data.proofId);
 
       // Show redirect message and redirect to claim page after 2 seconds
       setTimeout(function() {

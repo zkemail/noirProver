@@ -605,7 +605,7 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
   <script>
     setStepComplete('step3');
     setStepComplete('step4');
-    showResult('${proofId}', '${email.id}', ${proofResult.proof.length}, ${proofResult.publicInputs.length}, '${finalRedirectUrl}');
+    showResult(${JSON.stringify({ proofId, emailId: email.id, proofCount: proofResult.proof.length, publicInputsCount: proofResult.publicInputs.length, redirectUrl: finalRedirectUrl })});
   </script>`);
     res.end();
   } catch (error) {
@@ -618,7 +618,7 @@ app.get("/gmail/callback", async (req: Request, res: Response) => {
     setStepError('step2');
     setStepError('step3');
     setStepError('step4');
-    showError('Error: ${errorMessage.replace(/'/g, "\\'")}');
+    const err = ${JSON.stringify(errorMessage)}; showError('Error: ' + err);
   </script>`);
     res.end();
   }
