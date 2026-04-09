@@ -50,7 +50,7 @@ async function downloadFile(url: string, destPath: string, maxRedirects: number 
   });
 }
 
-async function prepareCircuit(slug: string): Promise<void> {
+async function prepareCircuit(slug: string, refresh: boolean): Promise<void> {
   const { default: initZkEmail } = await import("@zk-email/sdk");
   const sdk = initZkEmail({ baseUrl: "https://dev-conductor.zk.email" });
 
@@ -65,7 +65,12 @@ async function prepareCircuit(slug: string): Promise<void> {
   const zipPath = path.join(CIRCUITS_DIR, `${blueprintId}.zip`);
   const compiledMarker = path.join(circuitDir, ".compiled");
 
-  if (fs.existsSync(circuitDir) && fs.existsSync(compiledMarker)) {
+  if (refresh && fs.existsSync(circuitDir)) {
+    console.log(`Refreshing: removing existing circuit for ${slug}...`);
+    fs.rmSync(circuitDir, { recursive: true, force: true });
+  }
+
+  if (!refresh && fs.existsSync(circuitDir) && fs.existsSync(compiledMarker)) {
     console.log(`✓ Already compiled: ${slug} (${blueprintId})`);
     return;
   }
@@ -97,12 +102,13 @@ async function prepareCircuit(slug: string): Promise<void> {
 }
 
 async function main() {
+  const refresh = process.argv.includes("--refresh");
   const slugs: string[] = JSON.parse(fs.readFileSync(BLUEPRINTS_FILE, "utf-8"));
-  console.log(`Pre-caching ${slugs.length} blueprint(s)...`);
+  console.log(`Pre-caching ${slugs.length} blueprint(s)...${refresh ? " (refresh mode)" : ""}`);
 
   for (const slug of slugs) {
     try {
-      await prepareCircuit(slug);
+      await prepareCircuit(slug, refresh);
     } catch (err) {
       console.error(`✗ Failed to cache ${slug}:`, err);
       process.exit(1);
@@ -110,6 +116,7 @@ async function main() {
   }
 
   console.log("\n✓ All circuits pre-cached successfully.");
+  process.exit(0);
 }
 
 main();
