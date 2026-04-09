@@ -44,10 +44,10 @@ const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
 const GMAIL_REDIRECT_URI =
   process.env.GMAIL_REDIRECT_URI || "http://localhost:3000/gmail/callback";
 
-// Allowlist of trusted origins that may receive the proof redirect.
+// Allowlist of trusted origins for CORS and proof redirects.
 // Comma-separated, e.g. "https://pay.zk.email,https://ens.zk.email"
-const ALLOWED_REDIRECT_ORIGINS = (
-  process.env.ALLOWED_REDIRECT_ORIGINS || "https://pay.zk.email,https://ens.zk.email"
+const CORS_ALLOWED_ORIGINS = (
+  process.env.CORS_ALLOWED_ORIGINS || "https://pay.zk.email,https://ens.zk.email"
 )
   .split(",")
   .map((o) => o.trim())
@@ -60,7 +60,7 @@ function resolveRedirectUrl(redirectUri: string | undefined): string {
   try {
     const url = new URL(redirectUri);
     const origin = url.origin; // e.g. "https://ens.zk.email"
-    if (ALLOWED_REDIRECT_ORIGINS.includes(origin)) {
+    if (CORS_ALLOWED_ORIGINS.includes(origin)) {
       return redirectUri;
     }
     console.warn(`Redirect URI origin not in allowlist: ${origin}`);
@@ -100,15 +100,18 @@ const callbackTemplate = fs.readFileSync(
 // Middleware to parse JSON request bodies with increased limits
 app.use(express.json({ limit: "50mb" }));
 
-// Enable CORS for all origins
+// Enable CORS for allowed origins only
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS"
-  );
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Max-Age", "86400"); // 24 hours
+  const origin = req.headers.origin;
+  if (origin && CORS_ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS"
+    );
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Max-Age", "86400"); // 24 hours
+  }
 
   // Handle preflight requests
   if (req.method === "OPTIONS") {
