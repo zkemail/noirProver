@@ -129,14 +129,20 @@ export class InputsGenerator {
         haystack_location,
         max_haystack_length: maxHaystackLength,
         max_match_length: dr.maxMatchLength || dr.maxLength,
-        parts: dr.parts.map((p) => ({
+        parts: dr.parts.map((p) => {
           // @ts-ignore
-          is_public: p.isPublic || !!p.is_public,
+          const isPublic = p.isPublic ?? p.is_public ?? false;
           // @ts-ignore
-          regex_def: p.regexDef || !!p.regex_def,
-          // @ts-ignore
-          ...(p.isPublic && { maxLength: p.maxLength || !!p.max_length }),
-        })),
+          const maxLength = p.maxLength ?? p.max_length;
+          return {
+            // @ts-ignore
+            is_public: isPublic,
+            // @ts-ignore
+            regex_def: p.regexDef ?? p.regex_def,
+            // @ts-ignore
+            ...(isPublic && maxLength !== undefined ? { maxLength } : {}),
+          };
+        }),
         proving_framework: "noir",
       };
     });
