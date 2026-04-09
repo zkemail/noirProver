@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "NODE_OPTIONS='--max-old-space-size=16384' bun src/server.ts"
+    "start": "NODE_OPTIONS='--max-old-space-size=16384' bun src/server.ts",
+    "precache": "node --max-old-space-size=16384 --no-warnings node_modules/.bin/tsx precache/precache.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
