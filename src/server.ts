@@ -332,7 +332,7 @@ export const getProof = async (
   const { initNoirWasm } = await import("@zk-email/sdk/initNoirWasm");
 
   const sdk = initZkEmail({
-    baseUrl: "https://dev-conductor.zk.email",
+    baseUrl: process.env.CONDUCTOR_URL || "https://staging-conductor.zk.email",
     logging: { enabled: true, level: "debug" },
   });
 
