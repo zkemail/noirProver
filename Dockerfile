@@ -59,6 +59,8 @@ RUN npm ci --omit=dev && \
 
 # Copy precache config and run precache to download and compile circuits
 COPY precache ./precache
+ARG CONDUCTOR_URL="https://staging-conductor.zk.email"
+ENV CONDUCTOR_URL=$CONDUCTOR_URL
 RUN node --no-warnings node_modules/.bin/tsx precache/precache.ts
 
 # Expose port
