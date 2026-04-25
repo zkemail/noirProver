@@ -153,7 +153,7 @@ function clearCircuits(slug?: string): void {
 
 async function precacheCircuit(slug: string, refresh: boolean): Promise<void> {
   const { default: initZkEmail } = await import("@zk-email/sdk");
-  const sdk = initZkEmail({ baseUrl: "https://dev-conductor.zk.email" });
+  const sdk = initZkEmail({ baseUrl: process.env.CONDUCTOR_URL || "https://staging-conductor.zk.email" });
 
   console.log(`\nFetching blueprint: ${slug}`);
   const blueprint = await sdk.getBlueprint(slug);
