@@ -328,7 +328,7 @@ export const getProof = async (
   command: string,
 ) => {
   const startTime = Date.now();
-  const { default: initZkEmail } = await import("@zk-email/sdk");
+  const { initZkEmailSdk: initZkEmail } = await import("@zk-email/sdk");
   const { initNoirWasm } = await import("@zk-email/sdk/initNoirWasm");
 
   const sdk = initZkEmail({
