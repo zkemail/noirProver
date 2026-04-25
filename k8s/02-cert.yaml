@@ -1,0 +1,8 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: noir-prover-cert
+  namespace: noir-prover
+spec:
+  domains:
+    - noir-prover.zk.email

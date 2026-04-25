@@ -1,0 +1,10 @@
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: noir-prover-backend-config
+  namespace: noir-prover
+spec:
+  timeoutSec: 7200  # 2 hours timeout for long-running ZK proof operations
+  connectionDraining:
+    drainingTimeoutSec: 60
+
