@@ -57,7 +57,9 @@ RUN npm ci --omit=dev && \
     npm install --no-save tsx && \
     npm cache clean --force
 
-COPY .cache/ .cache/
+# Copy precache config and run precache to download and compile circuits
+COPY precache ./precache
+RUN node --no-warnings node_modules/.bin/tsx precache/precache.ts
 
 # Expose port
 EXPOSE 3000
