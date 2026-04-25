@@ -21,7 +21,7 @@
     "@types/jest": "^30.0.0",
     "@types/supertest": "^6.0.3",
     "@zk-email/relayer-utils": "0.4.66-12",
-    "@zk-email/sdk": "3.0.0-nightly.11",
+    "@zk-email/sdk": "^3.0.0-nightly.19",
     "express": "^5.1.0",
     "fake-indexeddb": "^6.2.5",
     "googleapis": "^166.0.0",
